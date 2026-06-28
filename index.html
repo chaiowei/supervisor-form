@@ -175,11 +175,8 @@
 
         <div class="field" id="f-projectName">
           <label><span id="l-projectName">Project Name</span><span class="req">*</span></label>
-          <select name="projectName">
+          <select name="projectName" id="sel-projectName">
             <option value="">-- Select --</option>
-            <!-- ✏️ ADD YOUR PROJECT NAMES HERE -->
-            <option value="Project A">Project A</option>
-            <option value="Project B">Project B</option>
           </select>
           <div class="err-msg" id="e-projectName">Required / จำเป็น</div>
         </div>
@@ -344,8 +341,25 @@ const CFG = {
   MAX_PHOTOS: 10,
   PHOTO_MAX_PX: 1280,
   PHOTO_QUALITY: 0.70,
+
+  // ✏️ 在這裡新增/刪除工程名稱 — 格式: '顯示名稱'
+  PROJECTS: [
+    'Project A',
+    'Project B',
+  ],
 };
 // ═══════════════════════════════════════════════════════════
+
+// Auto-populate project name dropdown from CFG.PROJECTS
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('sel-projectName');
+  CFG.PROJECTS.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = p;
+    sel.appendChild(opt);
+  });
+});
 
 // i18n strings
 const T = {
