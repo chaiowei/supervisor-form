@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Daily Work Log / บันทึกงานประจำวัน</title>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    :root {
+      --green: #00B900;
+      --green-dark: #009900;
+      --bg: #f0f4f0;
+      --card: #ffffff;
+      --text: #1a1a1a;
+      --muted: #666;
+      --border: #dde5dd;
+      --red: #e53e3e;
+      --radius: 14px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans Thai', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 32px;
+    }
+    /* Header */
+    .hdr {
+      background: var(--green);
+      color: #fff;
+      padding: 14px 16px;
+      position: sticky; top: 0; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 2px 8px rgba(0,185,0,0.3);
+    }
+    .hdr h1 { font-size: 15px; font-weight: 700; line-height: 1.4; }
+    .hdr h1 small { display: block; font-size: 12px; font-weight: 400; opacity: 0.85; margin-top: 2px; }
+    .lang-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.5);
+      color: #fff; padding: 6px 14px;
+      border-radius: 20px; font-size: 13px; font-weight: 700;
+      cursor: pointer; white-space: nowrap; min-width: 56px; text-align: center;
+    }
+    /* Container */
+    .wrap { max-width: 540px; margin: 0 auto; padding: 14px 12px; }
+    /* Card */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+    }
+    .sec-title {
+      font-size: 11px; font-weight: 700;
+      color: var(--green); text-transform: uppercase; letter-spacing: 0.6px;
+      border-bottom: 2px solid #e6f4e6;
+      padding-bottom: 8px; margin-bottom: 16px;
+    }
+    /* Fields */
+    .field { margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+    label {
+      display: block; font-size: 13px; font-weight: 600;
+      color: var(--text); margin-bottom: 6px;
+    }
+    label .req { color: var(--red); margin-left: 1px; }
+    label .hint { display: block; font-weight: 400; color: var(--muted); font-size: 11px; margin-top: 2px; }
+    input[type="text"], input[type="number"], input[type="date"], select, textarea {
+      width: 100%; padding: 11px 13px;
+      border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: 15px; font-family: inherit; color: var(--text);
+      background: #fafdf9;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      -webkit-appearance: none; appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(0,185,0,0.12); background: #fff;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 13px center;
+      padding-right: 34px;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    /* Weather grid */
+    .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    /* Error state */
+    .err-msg { display: none; color: var(--red); font-size: 11px; margin-top: 4px; }
+    .field.err input, .field.err select, .field.err textarea { border-color: var(--red); }
+    .field.err .err-msg { display: block; }
+    /* Photo upload */
+    .photo-zone {
+      border: 2px dashed var(--border); border-radius: 10px;
+      padding: 22px 16px; text-align: center; cursor: pointer;
+      position: relative; transition: border-color 0.2s;
+    }
+    .photo-zone:hover { border-color: var(--green); }
+    .photo-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .photo-zone-icon { font-size: 30px; margin-bottom: 6px; }
+    .photo-zone-label { font-size: 13px; color: var(--muted); }
+    .photo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 10px; }
+    .thumb { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #eee; }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .thumb .del {
+      position: absolute; top: 4px; right: 4px;
+      background: rgba(0,0,0,0.65); color: #fff;
+      border: none; border-radius: 50%; width: 22px; height: 22px;
+      font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    /* Progress text */
+    .upload-progress { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; min-height: 18px; }
+    /* Submit */
+    .submit-btn {
+      width: 100%; padding: 15px;
+      background: var(--green); color: #fff;
+      border: none; border-radius: var(--radius);
+      font-size: 16px; font-weight: 700; cursor: pointer;
+      margin-top: 6px; transition: background 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .submit-btn:hover { background: var(--green-dark); }
+    .submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+    .spinner {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Result screens */
+    .screen { display: none; text-align: center; padding: 48px 24px; }
+    .screen-icon { font-size: 60px; margin-bottom: 16px; }
+    .screen-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .screen-msg { font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .retry-btn {
+      margin-top: 20px; padding: 12px 28px;
+      background: var(--green); color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div id="mainApp">
+  <!-- Header -->
+  <div class="hdr">
+    <h1>
+      <span id="hdrTitle">Daily Work Log</span>
+      <small id="hdrSub">บันทึกงานประจำวัน</small>
+    </h1>
+    <button class="lang-btn" id="langBtn" onclick="toggleLang()">TH</button>
+  </div>
+
+  <div class="wrap">
+    <form id="theForm" novalidate>
+
+      <!-- 1. Basic Info -->
+      <div class="card">
+        <div class="sec-title" id="sec1">Basic Information</div>
+
+        <div class="field" id="f-supervisor">
+          <label><span id="l-supervisor">Supervisor</span><span class="req">*</span></label>
+          <select name="supervisor">
+            <option value="" id="opt-sel">-- Select --</option>
+            <option value="謝喬幃/Jerry_HSIEH">謝喬幃 / Jerry_HSIEH</option>
+          </select>
+          <div class="err-msg" id="e-supervisor">Required / จำเป็น</div>
+        </div>
+
+        <div class="field" id="f-projectName">
+          <label><span id="l-projectName">Project Name</span><span class="req">*</span></label>
+          <select name="projectName">
+            <option value="">-- Select --</option>
+            <!-- ✏️ ADD YOUR PROJECT NAMES HERE -->
+            <option value="Project A">Project A</option>
+            <option value="Project B">Project B</option>
+          </select>
+          <div class="err-msg" id="e-projectName">Required / จำเป็น</div>
+        </div>
+
+        <div class="field" id="f-constructionArea">
+          <label><span id="l-constructionArea">Construction Area</span><span class="req">*</span></label>
+          <input type="text" name="constructionArea" id="i-constructionArea" placeholder="e.g. Building A, Zone 3">
+          <div class="err-msg" id="e-constructionArea">Required / จำเป็น</div>
+        </div>
+
+        <div class="field" id="f-contractor">
+          <label><span id="l-contractor">Contractor Company</span><span class="req">*</span></label>
+          <input type="text" name="contractor" id="i-contractor" placeholder="Enter contractor name">
+          <div class="err-msg" id="e-contractor">Required / จำเป็น</div>
+        </div>
+
+        <div class="field" id="f-date">
+          <label><span id="l-date">Date</span><span class="req">*</span></label>
+          <input type="date" name="date" id="i-date">
+          <div class="err-msg" id="e-date">Required / จำเป็น</div>
+        </div>
+      </div>
+
+      <!-- 2. Weather -->
+      <div class="card">
+        <div class="sec-title" id="sec2">Weather / สภาพอากาศ</div>
+        <div class="weather-grid">
+          <div class="field">
+            <label id="l-morning">Morning ☀️</label>
+            <select name="morningWeather">
+              <option value="">--</option>
+              <option value="sunny" id="w-sunny-1">☀️ Sunny</option>
+              <option value="rainy" id="w-rainy-1">🌧️ Rainy</option>
+            </select>
+          </div>
+          <div class="field">
+            <label id="l-afternoon">Afternoon 🌤️</label>
+            <select name="afternoonWeather">
+              <option value="">--</option>
+              <option value="sunny" id="w-sunny-2">☀️ Sunny</option>
+              <option value="rainy" id="w-rainy-2">🌧️ Rainy</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Work Details -->
+      <div class="card">
+        <div class="sec-title" id="sec3">Work Details</div>
+
+        <div class="field" id="f-constructionLocation">
+          <label>
+            <span id="l-constructionLocation">Construction Location</span><span class="req">*</span>
+            <span class="hint" id="h-constructionLocation">Detailed location within the area</span>
+          </label>
+          <textarea name="constructionLocation" rows="3"></textarea>
+          <div class="err-msg" id="e-constructionLocation">Required / จำเป็น</div>
+        </div>
+
+        <div class="field" id="f-constructionItems">
+          <label>
+            <span id="l-constructionItems">Construction Items</span><span class="req">*</span>
+            <span class="hint" id="h-constructionItems">Today's work tasks</span>
+          </label>
+          <textarea name="constructionItems" rows="4"></textarea>
+          <div class="err-msg" id="e-constructionItems">Required / จำเป็น</div>
+        </div>
+
+        <div class="field" id="f-workers">
+          <label>
+            <span id="l-workers">Number of Workers</span><span class="req">*</span>
+            <span class="hint" id="h-workers">Total on-site today</span>
+          </label>
+          <input type="number" name="workers" min="0" max="9999" id="i-workers">
+          <div class="err-msg" id="e-workers">Required / จำเป็น</div>
+        </div>
+      </div>
+
+      <!-- 4. Resources -->
+      <div class="card">
+        <div class="sec-title" id="sec4">Resources & Materials</div>
+
+        <div class="field">
+          <label id="l-materialsUsed">Materials Used</label>
+          <textarea name="materialsUsed" rows="3"></textarea>
+        </div>
+        <div class="field">
+          <label id="l-equipment">Equipment Used</label>
+          <textarea name="equipment" rows="3"></textarea>
+        </div>
+      </div>
+
+      <!-- 5. Records -->
+      <div class="card">
+        <div class="sec-title" id="sec5">Records & Notes</div>
+
+        <div class="field">
+          <label id="l-communication">Contractor Communication</label>
+          <textarea name="communication" rows="3"></textarea>
+        </div>
+        <div class="field">
+          <label id="l-otherNotes">Other Important Notes</label>
+          <textarea name="otherNotes" rows="3"></textarea>
+        </div>
+        <div class="field">
+          <label id="l-samplingTests">Sample & Testing Records</label>
+          <textarea name="samplingTests" rows="3"></textarea>
+        </div>
+        <div class="field">
+          <label id="l-qualityInspection">Quality & Quantity Inspection</label>
+          <textarea name="qualityInspection" rows="3"></textarea>
+        </div>
+      </div>
+
+      <!-- 6. Photos -->
+      <div class="card">
+        <div class="sec-title" id="sec6">Site Photos / รูปภาพหน้างาน</div>
+        <div class="field">
+          <div class="photo-zone" id="photoZone">
+            <input type="file" id="photoInput" accept="image/*" multiple onchange="addPhotos(this)">
+            <div class="photo-zone-icon">📷</div>
+            <div class="photo-zone-label" id="l-photoLabel">Tap to upload photos (max 10) / แตะเพื่ออัปโหลดรูป (สูงสุด 10 รูป)</div>
+          </div>
+          <div class="photo-grid" id="photoGrid"></div>
+          <div class="upload-progress" id="uploadProgress"></div>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" class="submit-btn" id="submitBtn">
+        <div class="spinner" id="spinner"></div>
+        <span id="submitLabel">Submit Report / ส่งรายงาน</span>
+      </button>
+
+    </form>
+
+    <!-- Success -->
+    <div class="screen" id="successScreen">
+      <div class="screen-icon">✅</div>
+      <div class="screen-title" id="successTitle">Submitted!</div>
+      <div class="screen-msg" id="successMsg">Your report has been submitted. You will receive a confirmation via LINE shortly.</div>
+    </div>
+
+    <!-- Error -->
+    <div class="screen" id="errorScreen">
+      <div class="screen-icon">❌</div>
+      <div class="screen-title" id="errorTitle">Submission Failed</div>
+      <div class="screen-msg" id="errorMsg">Please try again. If the problem persists, contact your supervisor.</div>
+      <button class="retry-btn" id="retryBtn" onclick="retryForm()">Try Again / ลองใหม่</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIGURATION — fill in before deploying
+// ═══════════════════════════════════════════════════════════
+const CFG = {
+  LIFF_ID:          'YOUR_LIFF_ID',          // LINE Developers Console
+  N8N_WEBHOOK_URL:  'YOUR_N8N_WEBHOOK_URL',   // n8n Webhook node URL
+  IMGBB_API_KEY:    'YOUR_IMGBB_API_KEY',     // imgbb.com free API key
+  MAX_PHOTOS: 10,
+  PHOTO_MAX_PX: 1280,
+  PHOTO_QUALITY: 0.70,
+};
+// ═══════════════════════════════════════════════════════════
+
+// i18n strings
+const T = {
+  en: {
+    hdrTitle: 'Daily Work Log',
+    hdrSub: 'บันทึกงานประจำวัน',
+    sec1: 'Basic Information',
+    sec2: 'Weather',
+    sec3: 'Work Details',
+    sec4: 'Resources & Materials',
+    sec5: 'Records & Notes',
+    sec6: 'Site Photos',
+    'l-supervisor': 'Supervisor',
+    'l-projectName': 'Project Name',
+    'l-constructionArea': 'Construction Area',
+    'l-contractor': 'Contractor Company',
+    'l-date': 'Date',
+    'l-morning': 'Morning ☀️',
+    'l-afternoon': 'Afternoon 🌤️',
+    'l-constructionLocation': 'Construction Location',
+    'h-constructionLocation': 'Detailed location within the area',
+    'l-constructionItems': 'Construction Items',
+    'h-constructionItems': "Today's work tasks",
+    'l-workers': 'Number of Workers',
+    'h-workers': 'Total workers on site today',
+    'l-materialsUsed': 'Materials Used',
+    'l-equipment': 'Equipment Used',
+    'l-communication': 'Communication with Contractor',
+    'l-otherNotes': 'Other Important Notes',
+    'l-samplingTests': 'Sample & Testing Records',
+    'l-qualityInspection': 'Quality & Quantity Inspection',
+    'l-photoLabel': 'Tap to upload photos (max 10)',
+    'opt-sel': '-- Select --',
+    'w-sunny-1': '☀️ Sunny', 'w-rainy-1': '🌧️ Rainy',
+    'w-sunny-2': '☀️ Sunny', 'w-rainy-2': '🌧️ Rainy',
+    'i-constructionArea': 'e.g. Building A, Zone 3',
+    'i-contractor': 'Enter contractor name',
+    'i-workers': '',
+    submitLabel: 'Submit Report',
+    successTitle: 'Submitted!',
+    successMsg: 'Your daily report has been submitted. You will receive a confirmation via LINE shortly.',
+    errorTitle: 'Submission Failed',
+    errorMsg: 'Please try again. If the problem persists, contact your supervisor.',
+    retryBtn: 'Try Again',
+    uploading: (n, t) => `Uploading photo ${n}/${t}...`,
+    submitting: 'Submitting...',
+    langBtn: 'TH',
+  },
+  th: {
+    hdrTitle: 'บันทึกงานประจำวัน',
+    hdrSub: 'Daily Work Log',
+    sec1: 'ข้อมูลพื้นฐาน',
+    sec2: 'สภาพอากาศ',
+    sec3: 'รายละเอียดงาน',
+    sec4: 'ทรัพยากรและวัสดุ',
+    sec5: 'บันทึกและหมายเหตุ',
+    sec6: 'รูปภาพหน้างาน',
+    'l-supervisor': 'ผู้ควบคุมงาน',
+    'l-projectName': 'ชื่อโครงการ',
+    'l-constructionArea': 'พื้นที่ก่อสร้าง',
+    'l-contractor': 'บริษัทผู้รับเหมา',
+    'l-date': 'วันที่',
+    'l-morning': 'เช้า ☀️',
+    'l-afternoon': 'บ่าย 🌤️',
+    'l-constructionLocation': 'ตำแหน่งที่ก่อสร้าง',
+    'h-constructionLocation': 'ระบุตำแหน่งที่แน่นอนในพื้นที่',
+    'l-constructionItems': 'รายการงานก่อสร้าง',
+    'h-constructionItems': 'งานที่ทำในวันนี้',
+    'l-workers': 'จำนวนคนงาน',
+    'h-workers': 'จำนวนคนงานทั้งหมดวันนี้',
+    'l-materialsUsed': 'วัสดุที่ใช้',
+    'l-equipment': 'เครื่องจักรและเครื่องมือที่ใช้',
+    'l-communication': 'บันทึกการประสานงานกับผู้รับเหมา',
+    'l-otherNotes': 'บันทึกเรื่องสำคัญอื่นๆ',
+    'l-samplingTests': 'บันทึกการเก็บตัวอย่างและทดสอบ',
+    'l-qualityInspection': 'บันทึกการตรวจสอบคุณภาพและปริมาณ',
+    'l-photoLabel': 'แตะเพื่ออัปโหลดรูปภาพ (สูงสุด 10 รูป)',
+    'opt-sel': '-- เลือก --',
+    'w-sunny-1': '☀️ แดดออก', 'w-rainy-1': '🌧️ ฝนตก',
+    'w-sunny-2': '☀️ แดดออก', 'w-rainy-2': '🌧️ ฝนตก',
+    'i-constructionArea': 'เช่น อาคาร A โซน 3',
+    'i-contractor': 'ระบุชื่อผู้รับเหมา',
+    'i-workers': '',
+    submitLabel: 'ส่งรายงาน',
+    successTitle: 'ส่งสำเร็จ!',
+    successMsg: 'รายงานประจำวันของคุณถูกส่งเรียบร้อยแล้ว คุณจะได้รับสำเนาทาง LINE ในไม่ช้า',
+    errorTitle: 'ส่งไม่สำเร็จ',
+    errorMsg: 'กรุณาลองใหม่อีกครั้ง หากยังมีปัญหา กรุณาติดต่อผู้ควบคุมงาน',
+    retryBtn: 'ลองใหม่',
+    uploading: (n, t) => `กำลังอัปโหลดรูป ${n}/${t}...`,
+    submitting: 'กำลังส่ง...',
+    langBtn: 'EN',
+  }
+};
+
+let lang = localStorage.getItem('wl_lang') || 'en';
+let photoFiles = [];
+let lineUserId = null;
+let lineDisplayName = null;
+
+// ── Init ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  applyLang();
+  document.querySelector('[name="date"]').value = new Date().toISOString().split('T')[0];
+  await initLiff();
+});
+
+async function initLiff() {
+  try {
+    await liff.init({ liffId: CFG.LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    const p = await liff.getProfile();
+    lineUserId = p.userId;
+    lineDisplayName = p.displayName;
+  } catch (e) {
+    // Dev/browser fallback
+    lineUserId = 'dev_' + Math.random().toString(36).slice(2, 8);
+    lineDisplayName = 'Dev User';
+    console.warn('LIFF not available — dev mode:', e.message);
+  }
+}
+
+// ── Language ─────────────────────────────────────────────
+function toggleLang() {
+  lang = lang === 'en' ? 'th' : 'en';
+  localStorage.setItem('wl_lang', lang);
+  applyLang();
+}
+
+function applyLang() {
+  const t = T[lang];
+  const ids = [
+    'hdrTitle','hdrSub','sec1','sec2','sec3','sec4','sec5','sec6',
+    'l-supervisor','l-projectName','l-constructionArea','l-contractor','l-date',
+    'l-morning','l-afternoon',
+    'l-constructionLocation','h-constructionLocation',
+    'l-constructionItems','h-constructionItems',
+    'l-workers','h-workers',
+    'l-materialsUsed','l-equipment','l-communication','l-otherNotes',
+    'l-samplingTests','l-qualityInspection','l-photoLabel',
+    'opt-sel','w-sunny-1','w-rainy-1','w-sunny-2','w-rainy-2',
+    'submitLabel','successTitle','successMsg','errorTitle','errorMsg','retryBtn','langBtn'
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && t[id] !== undefined) el.textContent = t[id];
+  });
+  // Placeholders
+  ['i-constructionArea','i-contractor','i-workers','i-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && t[id] !== undefined) el.placeholder = t[id];
+  });
+}
+
+// ── Photos ────────────────────────────────────────────────
+function addPhotos(input) {
+  const files = Array.from(input.files);
+  const slots = CFG.MAX_PHOTOS - photoFiles.length;
+  files.slice(0, slots).forEach((f, i) => {
+    const idx = photoFiles.length;
+    photoFiles.push(f);
+    showThumb(f, idx);
+  });
+  input.value = '';
+}
+
+function showThumb(file, idx) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const d = document.createElement('div');
+    d.className = 'thumb'; d.id = 'th-' + idx;
+    d.innerHTML = `<img src="${e.target.result}"><button type="button" class="del" onclick="removePhoto(${idx})">✕</button>`;
+    document.getElementById('photoGrid').appendChild(d);
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto(idx) {
+  photoFiles.splice(idx, 1);
+  const el = document.getElementById('th-' + idx);
+  if (el) el.remove();
+  // Re-index
+  document.querySelectorAll('.thumb').forEach((el, i) => {
+    el.id = 'th-' + i;
+    el.querySelector('.del').setAttribute('onclick', `removePhoto(${i})`);
+  });
+}
+
+async function compressPhoto(file) {
+  return new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        const M = CFG.PHOTO_MAX_PX;
+        if (w > M || h > M) {
+          if (w >= h) { h = Math.round(h * M / w); w = M; }
+          else { w = Math.round(w * M / h); h = M; }
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        res(c.toDataURL('image/jpeg', CFG.PHOTO_QUALITY).split(',')[1]);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadPhoto(b64) {
+  const fd = new FormData();
+  fd.append('image', b64);
+  const r = await fetch(`https://api.imgbb.com/1/upload?key=${CFG.IMGBB_API_KEY}`, {
+    method: 'POST', body: fd
+  });
+  const j = await r.json();
+  if (!j.success) throw new Error('imgBB upload failed: ' + j.error?.message);
+  return j.data.url;
+}
+
+// ── Validation ────────────────────────────────────────────
+const REQUIRED = ['supervisor','projectName','constructionArea','contractor','date','constructionLocation','constructionItems','workers'];
+
+function validate(data) {
+  let ok = true;
+  REQUIRED.forEach(name => {
+    const fid = 'f-' + name;
+    const el = document.getElementById(fid);
+    if (!data[name] || String(data[name]).trim() === '') {
+      if (el) el.classList.add('err');
+      ok = false;
+    } else {
+      if (el) el.classList.remove('err');
+    }
+  });
+  if (!ok) {
+    const first = document.querySelector('.field.err');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  return ok;
+}
+
+// ── Submit ────────────────────────────────────────────────
+document.getElementById('theForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const raw = Object.fromEntries(new FormData(e.target).entries());
+  if (!validate(raw)) return;
+
+  const btn = document.getElementById('submitBtn');
+  const lbl = document.getElementById('submitLabel');
+  const spn = document.getElementById('spinner');
+  const prog = document.getElementById('uploadProgress');
+  const t = T[lang];
+
+  btn.disabled = true;
+  spn.style.display = 'block';
+
+  try {
+    // Upload photos
+    const photoUrls = [];
+    for (let i = 0; i < photoFiles.length; i++) {
+      prog.textContent = t.uploading(i + 1, photoFiles.length);
+      const b64 = await compressPhoto(photoFiles[i]);
+      const url = await uploadPhoto(b64);
+      photoUrls.push(url);
+    }
+    prog.textContent = '';
+
+    lbl.textContent = t.submitting;
+
+    const payload = {
+      ...raw,
+      lineUserId,
+      lineDisplayName,
+      language: lang,
+      submittedAt: new Date().toISOString(),
+      photoUrls,
+      photoCount: photoUrls.length,
+    };
+
+    const res = await fetch(CFG.N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    showScreen('successScreen');
+  } catch (err) {
+    console.error('Submit error:', err);
+    showScreen('errorScreen');
+    btn.disabled = false;
+    spn.style.display = 'none';
+    lbl.textContent = t.submitLabel;
+  }
+});
+
+function showScreen(id) {
+  document.getElementById('theForm').style.display = 'none';
+  document.getElementById(id).style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function retryForm() {
+  document.getElementById('theForm').style.display = 'block';
+  document.getElementById('errorScreen').style.display = 'none';
+}
+</script>
+</body>
+</html>
