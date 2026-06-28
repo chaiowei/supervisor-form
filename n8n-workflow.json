@@ -1,0 +1,245 @@
+{
+  "name": "Supervisor Daily Report",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "supervisor-report",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "n1-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 340],
+      "webhookId": "supervisor-report"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ─────────────────────────────────────────────\n// STEP 1: Validate & prepare data\n// ─────────────────────────────────────────────\nconst d = $input.first().json;\n\n// Optional LINE ID whitelist (leave empty to allow all)\nconst WHITELIST = [];\nif (WHITELIST.length > 0 && !WHITELIST.includes(d.lineUserId)) {\n  throw new Error('Unauthorized LINE user: ' + d.lineUserId);\n}\n\n// Normalize weather\nconst wMap = {\n  zh: { sunny: '晴 ☀️', rainy: '雨 🌧️', '': '-' },\n  en: { sunny: 'Sunny ☀️', rainy: 'Rainy 🌧️', '': '-' },\n  th: { sunny: 'แดดออก ☀️', rainy: 'ฝนตก 🌧️', '': '-' },\n};\n\nconst mw = d.morningWeather || '';\nconst aw = d.afternoonWeather || '';\n\n// Build photo URL block\nconst photoUrls = d.photoUrls || [];\nconst photoBlock = photoUrls.length > 0\n  ? photoUrls.map((u, i) => `Photo ${i+1}: ${u}`).join('\\n')\n  : 'No photos';\n\n// Build Gemini prompt\nconst formJson = JSON.stringify({\n  language: d.language,\n  lineDisplayName: d.lineDisplayName,\n  supervisor: d.supervisor,\n  projectName: d.projectName,\n  constructionArea: d.constructionArea,\n  contractor: d.contractor,\n  date: d.date,\n  morningWeather: d.morningWeather || 'not specified',\n  afternoonWeather: d.afternoonWeather || 'not specified',\n  constructionLocation: d.constructionLocation,\n  constructionItems: d.constructionItems,\n  workers: d.workers,\n  materialsUsed: d.materialsUsed || 'None',\n  equipment: d.equipment || 'None',\n  communication: d.communication || 'None',\n  otherNotes: d.otherNotes || 'None',\n  samplingTests: d.samplingTests || 'None',\n  qualityInspection: d.qualityInspection || 'None',\n  photoCount: photoUrls.length,\n  photoUrls: photoUrls,\n}, null, 2);\n\nconst geminiPrompt = `You are a construction site reporting assistant.\nConvert the form data below into two formatted daily work log reports.\n\nRules:\n- Output ONLY a raw JSON object. No markdown, no code blocks, no explanation.\n- The JSON must have exactly two keys: \"zh_report\" and \"orig_report\".\n- zh_report: Full report in Traditional Chinese for the project manager.\n- orig_report: Full report in the submission language (\"en\" = English, \"th\" = Thai) for the contractor.\n- Use the emoji format below for both reports.\n- Translate all field labels to the appropriate language.\n- For empty/None fields, write \"—\" (em-dash).\n\nReport format (both zh and orig must follow this structure):\n📋 [Report title in language]\n━━━━━━━━━━━━━━━━━━━━━━━━\n📅 [Date label]: {date}\n👤 [Filled by label]: {lineDisplayName}\n🏗️ [Supervisor label]: {supervisor}\n📋 [Project label]: {projectName}\n🏭 [Area label]: {constructionArea}\n🏢 [Contractor label]: {contractor}\n━━━━━━━━━━━━━━━━━━━━━━━━\n🌤️ [Morning weather label]: {morningWeather}\n🌦️ [Afternoon weather label]: {afternoonWeather}\n━━━━━━━━━━━━━━━━━━━━━━━━\n📍 [Construction location label]:\n{constructionLocation}\n🔨 [Work items label]:\n{constructionItems}\n👷 [Workers label]: {workers} [persons label]\n━━━━━━━━━━━━━━━━━━━━━━━━\n📦 [Materials label]:\n{materialsUsed}\n🚧 [Equipment label]:\n{equipment}\n━━━━━━━━━━━━━━━━━━━━━━━━\n💬 [Communication label]:\n{communication}\n📝 [Other notes label]:\n{otherNotes}\n🧪 [Sampling tests label]:\n{samplingTests}\n✅ [Quality inspection label]:\n{qualityInspection}\n━━━━━━━━━━━━━━━━━━━━━━━━\n📷 [Photos label]: {photoCount} [photos label]\n${photoUrls.length > 0 ? photoUrls.map((u,i)=>`Photo ${i+1}: ${u}`).join('\\n') : ''}\n\nForm data (JSON):\n${formJson}`;\n\nreturn [{\n  json: {\n    ...d,\n    mwZh: wMap.zh[mw], awZh: wMap.zh[aw],\n    photoUrls, photoBlock, photoCount: photoUrls.length,\n    geminiPrompt,\n  }\n}];"
+      },
+      "id": "n2-prepare",
+      "name": "Prepare Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + $vars.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"contents\": [{ \"parts\": [{ \"text\": $json.geminiPrompt }] }], \"generationConfig\": { \"temperature\": 0.2, \"maxOutputTokens\": 3000, \"responseMimeType\": \"application/json\" } }) }}",
+        "options": {}
+      },
+      "id": "n3-gemini",
+      "name": "Gemini API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 340]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ─────────────────────────────────────────────\n// STEP 3: Parse Gemini response + format messages\n// ─────────────────────────────────────────────\nconst geminiRes = $input.first().json;\n\n// Extract text from Gemini response\nlet rawText = '';\ntry {\n  rawText = geminiRes.candidates[0].content.parts[0].text;\n} catch(e) {\n  throw new Error('Gemini response parse failed: ' + JSON.stringify(geminiRes));\n}\n\n// Parse the JSON from Gemini\nlet reports;\ntry {\n  // Handle case where Gemini wraps in markdown code blocks\n  const cleaned = rawText.replace(/^```json\\n?|```$/g, '').trim();\n  reports = JSON.parse(cleaned);\n} catch(e) {\n  throw new Error('Gemini JSON parse failed: ' + rawText.substring(0, 200));\n}\n\n// Get original form data from previous node\n// (We need to pass it through — use $('Prepare Data').first().json)\nconst d = $('Prepare Data').first().json;\n\nconst zhReport  = reports.zh_report  || '[Report generation failed]';\nconst origReport = reports.orig_report || '[Report generation failed]';\n\n// Contractor message (original language)\nconst contractorMsg = origReport;\n\n// Jerry's message (Chinese)\nconst jerryMsg = zhReport;\n\nreturn [{\n  json: {\n    ...d,\n    zhReport,\n    origReport,\n    contractorMsg,\n    jerryMsg,\n  }\n}];"
+      },
+      "id": "n4-parse",
+      "name": "Parse & Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 340]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "create",
+        "databaseId": "={{ $vars.NOTION_DATABASE_ID }}",
+        "title": "={{ $json.date + ' | ' + $json.contractor + ' | ' + $json.projectName }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "日期|date",
+              "dateValue": "={{ $json.date }}"
+            },
+            {
+              "key": "監工人員|select",
+              "selectValue": "={{ $json.supervisor }}"
+            },
+            {
+              "key": "工程名稱|select",
+              "selectValue": "={{ $json.projectName }}"
+            },
+            {
+              "key": "施工廠區|rich_text",
+              "textValue": "={{ $json.constructionArea }}"
+            },
+            {
+              "key": "施工廠商|rich_text",
+              "textValue": "={{ $json.contractor }}"
+            },
+            {
+              "key": "上午天氣|select",
+              "selectValue": "={{ $json.mwZh }}"
+            },
+            {
+              "key": "下午天氣|select",
+              "selectValue": "={{ $json.awZh }}"
+            },
+            {
+              "key": "施工部位|rich_text",
+              "textValue": "={{ $json.constructionLocation }}"
+            },
+            {
+              "key": "施工項目|rich_text",
+              "textValue": "={{ $json.constructionItems }}"
+            },
+            {
+              "key": "供給材料使用|rich_text",
+              "textValue": "={{ $json.materialsUsed || '' }}"
+            },
+            {
+              "key": "出工人數|number",
+              "numberValue": "={{ $json.workers }}"
+            },
+            {
+              "key": "機具使用|rich_text",
+              "textValue": "={{ $json.equipment || '' }}"
+            },
+            {
+              "key": "與廠商溝通協調記錄|rich_text",
+              "textValue": "={{ $json.communication || '' }}"
+            },
+            {
+              "key": "其他重要事項記錄|rich_text",
+              "textValue": "={{ $json.otherNotes || '' }}"
+            },
+            {
+              "key": "施工取樣試驗記錄|rich_text",
+              "textValue": "={{ $json.samplingTests || '' }}"
+            },
+            {
+              "key": "品質數量檢查記錄|rich_text",
+              "textValue": "={{ $json.qualityInspection || '' }}"
+            },
+            {
+              "key": "照片連結|rich_text",
+              "textValue": "={{ $json.photoBlock }}"
+            },
+            {
+              "key": "填寫語言|select",
+              "selectValue": "={{ $json.language === 'th' ? '泰文' : '英文' }}"
+            },
+            {
+              "key": "LINE填寫人|rich_text",
+              "textValue": "={{ $json.lineDisplayName }}"
+            },
+            {
+              "key": "LINE UserID|rich_text",
+              "textValue": "={{ $json.lineUserId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n5-notion",
+      "name": "Notion: Save Report",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [1120, 340],
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_NOTION_CREDENTIAL_ID",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $vars.LINE_CHANNEL_ACCESS_TOKEN }}"
+            },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"to\": $('Parse & Format').first().json.lineUserId, \"messages\": [{ \"type\": \"text\", \"text\": $('Parse & Format').first().json.contractorMsg }] }) }}",
+        "options": {}
+      },
+      "id": "n6-line-contractor",
+      "name": "LINE → Contractor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $vars.LINE_CHANNEL_ACCESS_TOKEN }}"
+            },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"to\": $vars.JERRY_LINE_USER_ID, \"messages\": [{ \"type\": \"text\", \"text\": $('Parse & Format').first().json.jerryMsg }] }) }}",
+        "options": {}
+      },
+      "id": "n7-line-jerry",
+      "name": "LINE → Jerry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 440]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Prepare Data", "type": "main", "index": 0 }]]
+    },
+    "Prepare Data": {
+      "main": [[{ "node": "Gemini API", "type": "main", "index": 0 }]]
+    },
+    "Gemini API": {
+      "main": [[{ "node": "Parse & Format", "type": "main", "index": 0 }]]
+    },
+    "Parse & Format": {
+      "main": [[{ "node": "Notion: Save Report", "type": "main", "index": 0 }]]
+    },
+    "Notion: Save Report": {
+      "main": [
+        [
+          { "node": "LINE → Contractor", "type": "main", "index": 0 },
+          { "node": "LINE → Jerry", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": []
+}
