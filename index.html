@@ -166,9 +166,8 @@
 
         <div class="field" id="f-supervisor">
           <label><span id="l-supervisor">Supervisor</span><span class="req">*</span></label>
-          <select name="supervisor">
+          <select name="supervisor" id="sel-supervisor">
             <option value="" id="opt-sel">-- Select --</option>
-            <option value="謝喬幃/Jerry_HSIEH">謝喬幃 / Jerry_HSIEH</option>
           </select>
           <div class="err-msg" id="e-supervisor">Required / จำเป็น</div>
         </div>
@@ -189,7 +188,9 @@
 
         <div class="field" id="f-contractor">
           <label><span id="l-contractor">Contractor Company</span><span class="req">*</span></label>
-          <input type="text" name="contractor" id="i-contractor" placeholder="Enter contractor name">
+          <select name="contractor" id="sel-contractor">
+            <option value="">-- Select --</option>
+          </select>
           <div class="err-msg" id="e-contractor">Required / จำเป็น</div>
         </div>
 
@@ -250,7 +251,7 @@
             <span id="l-workers">Number of Workers</span><span class="req">*</span>
             <span class="hint" id="h-workers">Total on-site today</span>
           </label>
-          <input type="number" name="workers" min="0" max="9999" id="i-workers">
+          <input type="number" name="workers" min="1" max="9999" step="1" inputmode="numeric" id="i-workers" oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value<1&&this.value!=='')this.value=1;">
           <div class="err-msg" id="e-workers">Required / จำเป็น</div>
         </div>
       </div>
@@ -342,23 +343,34 @@ const CFG = {
   PHOTO_MAX_PX: 1280,
   PHOTO_QUALITY: 0.70,
 
-  // ✏️ 在這裡新增/刪除工程名稱 — 格式: '顯示名稱'
-  PROJECTS: [
-    'Project A',
-    'Project B',
-  ],
+  // ✏️ 選項來源：到 Notion「LINE表單選項設定」資料庫新增/刪除
+  OPTIONS_URL: 'https://jerry-hsieh.app.n8n.cloud/webhook/form-options',
 };
 // ═══════════════════════════════════════════════════════════
 
-// Auto-populate project name dropdown from CFG.PROJECTS
-document.addEventListener('DOMContentLoaded', () => {
-  const sel = document.getElementById('sel-projectName');
-  CFG.PROJECTS.forEach(p => {
+// Auto-populate dropdowns from Notion via n8n
+function fillSelect(id, items) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  items.forEach(name => {
     const opt = document.createElement('option');
-    opt.value = p;
-    opt.textContent = p;
+    opt.value = name;
+    opt.textContent = name;
     sel.appendChild(opt);
   });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch(CFG.OPTIONS_URL, { method: 'GET' });
+    if (!res.ok) throw new Error('options fetch failed');
+    const data = await res.json();
+    fillSelect('sel-supervisor', data.supervisors || []);
+    fillSelect('sel-projectName', data.projects || []);
+    fillSelect('sel-contractor', data.contractors || []);
+  } catch (e) {
+    console.warn('[form-options] fetch failed, using empty lists:', e.message);
+  }
 });
 
 // i18n strings
@@ -508,7 +520,7 @@ function applyLang() {
     if (el && t[id] !== undefined) el.textContent = t[id];
   });
   // Placeholders
-  ['i-constructionArea','i-contractor','i-workers','i-date'].forEach(id => {
+  ['i-constructionArea','i-workers','i-date'].forEach(id => {
     const el = document.getElementById(id);
     if (el && t[id] !== undefined) el.placeholder = t[id];
   });
@@ -590,7 +602,12 @@ function validate(data) {
   REQUIRED.forEach(name => {
     const fid = 'f-' + name;
     const el = document.getElementById(fid);
-    if (!data[name] || String(data[name]).trim() === '') {
+    let invalid = !data[name] || String(data[name]).trim() === '';
+    if (!invalid && name === 'workers') {
+      const v = Number(data[name]);
+      invalid = !Number.isInteger(v) || v < 1;
+    }
+    if (invalid) {
       if (el) el.classList.add('err');
       ok = false;
     } else {
