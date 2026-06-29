@@ -343,8 +343,8 @@ const CFG = {
   PHOTO_MAX_PX: 1280,
   PHOTO_QUALITY: 0.70,
 
-  // ✏️ 選項來源：到 Notion「LINE表單選項設定」資料庫新增/刪除
-  OPTIONS_URL: 'https://jerry-hsieh.app.n8n.cloud/webhook/form-options',
+  // ✏️ 選項來源：Google Sheets 公開 CSV（發布到網路後貼上 URL）
+  OPTIONS_URL: 'REPLACE_WITH_GOOGLE_SHEETS_CSV_URL',
 };
 // ═══════════════════════════════════════════════════════════
 
@@ -362,12 +362,21 @@ function fillSelect(id, items) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    const res = await fetch(CFG.OPTIONS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const res = await fetch(CFG.OPTIONS_URL);
     if (!res.ok) throw new Error('options fetch failed');
-    const data = await res.json();
-    fillSelect('sel-supervisor', data.supervisors || []);
-    fillSelect('sel-projectName', data.projects || []);
-    fillSelect('sel-contractor', data.contractors || []);
+    const csv = await res.text();
+    const supervisors = [], projects = [], contractors = [];
+    csv.split('\n').slice(1).forEach(row => {
+      const cols = row.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+      const [name, type, enabled] = cols;
+      if (!name || enabled !== 'TRUE') return;
+      if (type === '監工人員') supervisors.push(name);
+      else if (type === '工程名稱') projects.push(name);
+      else if (type === '施工廠商') contractors.push(name);
+    });
+    fillSelect('sel-supervisor', supervisors);
+    fillSelect('sel-projectName', projects);
+    fillSelect('sel-contractor', contractors);
   } catch (e) {
     console.warn('[form-options] fetch failed, using empty lists:', e.message);
   }
