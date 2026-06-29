@@ -362,7 +362,7 @@ function fillSelect(id, items) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    const res = await fetch(CFG.OPTIONS_URL, { method: 'GET' });
+    const res = await fetch(CFG.OPTIONS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     if (!res.ok) throw new Error('options fetch failed');
     const data = await res.json();
     fillSelect('sel-supervisor', data.supervisors || []);
