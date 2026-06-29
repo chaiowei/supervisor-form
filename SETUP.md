@@ -77,20 +77,24 @@ n8n Cloud Webhook
 
 ---
 
-#### 1-B：Variables（實例變數）— ⚠️ 不是在節點上設，是在 n8n 設定頁
+#### 1-B：其他 Credentials（在節點上設）
 
-> Gemini 和 LINE 節點使用 `$vars.*` 讀取變數，**不是** 從節點 Credential 讀。
+**Gemini API 節點**
+- 點擊節點 → Credential → Create New
+- 類型：**Query Auth**
+- Name: `key`
+- Value: 你的 Gemini API Key
 
-1. 前往 n8n 左側選單 → **Settings** → **Variables**
-2. 新增以下四個變數：
+**LINE → Contractor 節點 & LINE → Jerry 節點（兩個都要設同一個）**
+- 點擊節點 → Credential → Create New
+- 類型：**Header Auth**
+- Name: `Authorization`
+- Value: `Bearer 你的LINE_CHANNEL_ACCESS_TOKEN`
 
-| Variable 名稱 | 值 |
-|---|---|
-| `GEMINI_API_KEY` | 你的 Gemini API Key |
-| `LINE_CHANNEL_ACCESS_TOKEN` | 你的 LINE Channel Access Token |
-| `JERRY_LINE_USER_ID` | 你的個人 LINE User ID（見下方取得方式）|
-
-> **取得 Jerry LINE User ID**：傳一則訊息給你的 LINE OA，在 n8n executions log 找 `lineUserId` 欄位
+**LINE → Jerry 節點 JSON body**
+- 點擊節點 → 找到 `REPLACE_WITH_YOUR_LINE_USER_ID`
+- 替換成你的 LINE User ID
+- 取得方式：傳一則訊息給你的 LINE OA，在 n8n executions log 找 `lineUserId`
 
 ---
 

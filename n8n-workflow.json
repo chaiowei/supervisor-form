@@ -29,7 +29,9 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + $vars.GEMINI_API_KEY }}",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -45,7 +47,13 @@
       "name": "Gemini API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 340]
+      "position": [680, 340],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "",
+          "name": "Gemini API Key"
+        }
+      }
     },
     {
       "parameters": {
@@ -166,13 +174,11 @@
       "parameters": {
         "method": "POST",
         "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $vars.LINE_CHANNEL_ACCESS_TOKEN }}"
-            },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },
@@ -185,32 +191,42 @@
       "name": "LINE → Contractor",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 240]
+      "position": [1340, 240],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "LINE Bearer Token"
+        }
+      }
     },
     {
       "parameters": {
         "method": "POST",
         "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $vars.LINE_CHANNEL_ACCESS_TOKEN }}"
-            },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ \"to\": $vars.JERRY_LINE_USER_ID, \"messages\": [{ \"type\": \"text\", \"text\": $('Parse & Format').first().json.jerryMsg }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ \"to\": 'REPLACE_WITH_YOUR_LINE_USER_ID', \"messages\": [{ \"type\": \"text\", \"text\": $('Parse & Format').first().json.jerryMsg }] }) }}",
         "options": {}
       },
       "id": "n7-line-jerry",
       "name": "LINE → Jerry",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 440]
+      "position": [1340, 440],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "LINE Bearer Token"
+        }
+      }
     }
   ],
   "connections": {
