@@ -49,9 +49,23 @@ n8n Cloud Webhook
 
 ## 待手動完成 ⚠️
 
+### 步驟 0：重新匯入 n8n 工作流程（**必做**）
+
+> n8n Cloud 的儲存 API 有 401 bug，必須手動重新匯入修正版 JSON。
+
+1. 前往 https://jerry-hsieh.app.n8n.cloud/home/workflows
+2. 找到 **Supervisor Daily Report** → 右鍵 → **Delete**（或 Archive）
+3. 點右上角 **Add workflow** → **Import from file**
+4. 選 `n8n-workflow.json`（本資料夾內）
+5. 開啟匯入後的 workflow，繼續步驟 1 設定憑證
+
+> ⚠️ 同步匯入 `n8n-form-options.json`（LINE 表單選項查詢工作流程）
+
+---
+
 ### 步驟 1：n8n 工作流程憑證設定
 
-前往：https://jerry-hsieh.app.n8n.cloud/workflow/OCwh63R7TRuPgdDj
+前往匯入後的 Supervisor Daily Report workflow URL
 
 **Notion: Save Report 節點**
 - 點擊節點 → Credential → 選擇 **Notion2**（已存在）
