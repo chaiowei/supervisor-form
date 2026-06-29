@@ -1,0 +1,135 @@
+{
+  "name": "LINE Form Options 1",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": "e9478a4be50d48cd8b803c0d535da3bd",
+        "returnAll": true,
+        "simple": false,
+        "options": {}
+      },
+      "id": "203deada-2670-4e37-a923-93623bcc49b3",
+      "name": "Notion: Get Options",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "kLmoloeh6ugtFE1g",
+          "name": "Notion2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst supervisors = [];\nconst projects = [];\nconst contractors = [];\n\nfor (const item of items) {\n  const j = item.json;\n  const props = j.properties || {};\n  const name = j['名稱'] || props['名稱']?.title?.map(t => t.plain_text).join('') || '';\n  const type = j['類型'] || props['類型']?.select?.name || '';\n  const enabled = j['啟用'] ?? props['啟用']?.checkbox;\n  if (!name || !enabled) continue;\n  if (type === '監工人員') supervisors.push(name);\n  else if (type === '工程名稱') projects.push(name);\n  else if (type === '施工廠商') contractors.push(name);\n}\n\nreturn [{ json: { supervisors, projects, contractors } }];"
+      },
+      "id": "839f06c2-84de-4fb5-8ad8-e78e3c441de6",
+      "name": "Group by Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "dc68ee2d-a3ef-4de7-9b48-4e3da4b2b461",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "form-options",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "db71b75a-8be9-4b75-a531-71cb97adfaed",
+      "name": "Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "form-options"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Notion: Get Options": {
+      "main": [
+        [
+          {
+            "node": "Group by Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group by Type": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Notion: Get Options",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "708e8dd6-a7c7-4daf-97c0-10bb7aebcd2b",
+  "meta": {
+    "instanceId": "19324eef6ef6ee8cedb30e38298eed3255cf4c84b5e75a4495f95d008351b787"
+  },
+  "id": "zo9Ddxks6PuSimiM",
+  "tags": []
+}

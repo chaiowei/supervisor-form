@@ -1,0 +1,422 @@
+{
+  "name": "LINE Form Options 2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "supervisor-report",
+        "options": {}
+      },
+      "id": "53fb2e8d-2948-428b-be65-ffffe710525c",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        704,
+        1296
+      ],
+      "webhookId": "supervisor-report"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// STEP 1: Validate & prepare data\n// ─────────────────────────────────────────────\nconst raw = $input.first().json;\nconst d = raw.body || raw; // n8n webhook v2 wraps POST body in .body\n\n// Optional LINE ID whitelist (leave empty to allow all)\nconst WHITELIST = [];\nif (WHITELIST.length > 0 && !WHITELIST.includes(d.lineUserId)) {\n  throw new Error('Unauthorized LINE user: ' + d.lineUserId);\n}\n\n// Normalize weather\nconst wMap = {\n  zh: { sunny: '晴 ☀️', rainy: '雨 🌧️', '': '-' },\n  en: { sunny: 'Sunny ☀️', rainy: 'Rainy 🌧️', '': '-' },\n  th: { sunny: 'แดดออก ☀️', rainy: 'ฝนตก 🌧️', '': '-' },\n};\n\nconst mw = d.morningWeather || '';\nconst aw = d.afternoonWeather || '';\n\n// Build photo URL block\nconst photoUrls = d.photoUrls || [];\nconst photoBlock = photoUrls.length > 0\n  ? photoUrls.map((u, i) => `Photo ${i+1}: ${u}`).join('\\n')\n  : 'No photos';\n\n// Build Gemini prompt\nconst formJson = JSON.stringify({\n  language: d.language,\n  lineDisplayName: d.lineDisplayName,\n  supervisor: d.supervisor,\n  projectName: d.projectName,\n  constructionArea: d.constructionArea,\n  contractor: d.contractor,\n  date: d.date,\n  morningWeather: d.morningWeather || 'not specified',\n  afternoonWeather: d.afternoonWeather || 'not specified',\n  constructionLocation: d.constructionLocation,\n  constructionItems: d.constructionItems,\n  workers: d.workers,\n  materialsUsed: d.materialsUsed || 'None',\n  equipment: d.equipment || 'None',\n  communication: d.communication || 'None',\n  otherNotes: d.otherNotes || 'None',\n  samplingTests: d.samplingTests || 'None',\n  qualityInspection: d.qualityInspection || 'None',\n  photoCount: photoUrls.length,\n  photoUrls: photoUrls,\n}, null, 2);\n\nconst geminiPrompt = `You are a construction site reporting assistant.\nConvert the form data below into two formatted daily work log reports.\n\nRules:\n- Output ONLY a raw JSON object. No markdown, no code blocks, no explanation.\n- The JSON must have exactly two keys: \"zh_report\" and \"orig_report\".\n- zh_report: Full report in Traditional Chinese for the project manager.\n- orig_report: Full report in the submission language (\"en\" = English, \"th\" = Thai) for the contractor.\n- Use the emoji format below for both reports.\n- Translate all field labels to the appropriate language.\n- For empty/None fields, write \"—\" (em-dash).\n\nReport format (both zh and orig must follow this structure):\n📋 [Report title in language]\n━━━━━━━━━━━━━━━━━━━━━━━━\n📅 [Date label]: {date}\n👤 [Filled by label]: {lineDisplayName}\n🏗️ [Supervisor label]: {supervisor}\n📋 [Project label]: {projectName}\n🏭 [Area label]: {constructionArea}\n🏢 [Contractor label]: {contractor}\n━━━━━━━━━━━━━━━━━━━━━━━━\n🌤️ [Morning weather label]: {morningWeather}\n🌦️ [Afternoon weather label]: {afternoonWeather}\n━━━━━━━━━━━━━━━━━━━━━━━━\n📍 [Construction location label]:\n{constructionLocation}\n🔨 [Work items label]:\n{constructionItems}\n👷 [Workers label]: {workers} [persons label]\n━━━━━━━━━━━━━━━━━━━━━━━━\n📦 [Materials label]:\n{materialsUsed}\n🚧 [Equipment label]:\n{equipment}\n━━━━━━━━━━━━━━━━━━━━━━━━\n💬 [Communication label]:\n{communication}\n📝 [Other notes label]:\n{otherNotes}\n🧪 [Sampling tests label]:\n{samplingTests}\n✅ [Quality inspection label]:\n{qualityInspection}\n━━━━━━━━━━━━━━━━━━━━━━━━\n📷 [Photos label]: {photoCount} [photos label]\n${photoUrls.length > 0 ? photoUrls.map((u,i)=>`Photo ${i+1}: ${u}`).join('\\n') : ''}\n\nForm data (JSON):\n${formJson}`;\n\nreturn [{\n  json: {\n    ...d,\n    mwZh: wMap.zh[mw], awZh: wMap.zh[aw],\n    photoUrls, photoBlock, photoCount: photoUrls.length,\n    geminiPrompt,\n  }\n}];"
+      },
+      "id": "fba9a002-dc17-4463-ac72-1d6e9fc1216a",
+      "name": "Prepare Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        1296
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"contents\": [{ \"parts\": [{ \"text\": $json.geminiPrompt }] }], \"generationConfig\": { \"temperature\": 0.2, \"maxOutputTokens\": 3000, \"responseMimeType\": \"application/json\" } }) }}",
+        "options": {}
+      },
+      "id": "2856751c-4d0b-45cd-891d-31e4ad480018",
+      "name": "Gemini API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1152,
+        1296
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "cvopB07msDuiCxA5",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// STEP 3: Parse Gemini response + format messages\n// ─────────────────────────────────────────────\nconst geminiRes = $input.first().json;\n\n// Extract text from Gemini response\nlet rawText = '';\ntry {\n  rawText = geminiRes.candidates[0].content.parts[0].text;\n} catch(e) {\n  throw new Error('Gemini response parse failed: ' + JSON.stringify(geminiRes));\n}\n\n// Parse the JSON from Gemini\nlet reports;\ntry {\n  // Handle case where Gemini wraps in markdown code blocks\n  const cleaned = rawText.replace(/^```json\\n?|```$/g, '').trim();\n  reports = JSON.parse(cleaned);\n} catch(e) {\n  throw new Error('Gemini JSON parse failed: ' + rawText.substring(0, 200));\n}\n\n// Get original form data from previous node\n// (We need to pass it through — use $('Prepare Data').first().json)\nconst d = $('Prepare Data').first().json;\n\nconst zhReport  = reports.zh_report  || '[Report generation failed]';\nconst origReport = reports.orig_report || '[Report generation failed]';\n\n// Contractor message (original language)\nconst contractorMsg = origReport;\n\n// Jerry's message (Chinese)\nconst jerryMsg = zhReport;\n\nreturn [{\n  json: {\n    ...d,\n    zhReport,\n    origReport,\n    contractorMsg,\n    jerryMsg,\n  }\n}];"
+      },
+      "id": "fad2c34d-c1a3-403f-a143-50a57622ed47",
+      "name": "Parse & Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        1296
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": "58c0c3ed5e9a476abd0c4047666d0155",
+        "title": "={{ $json.date + ' | ' + $json.contractor + ' | ' + $json.projectName }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "日期|date"
+            },
+            {
+              "key": "監工人員|select",
+              "selectValue": "={{ $json.supervisor }}"
+            },
+            {
+              "key": "工程名稱|select",
+              "selectValue": "={{ $json.projectName }}"
+            },
+            {
+              "key": "施工廠區|rich_text"
+            },
+            {
+              "key": "施工廠商|rich_text"
+            },
+            {
+              "key": "上午天氣|select",
+              "selectValue": "={{ $json.mwZh }}"
+            },
+            {
+              "key": "下午天氣|select",
+              "selectValue": "={{ $json.awZh }}"
+            },
+            {
+              "key": "施工部位|rich_text"
+            },
+            {
+              "key": "施工項目|rich_text"
+            },
+            {
+              "key": "供給材料使用|rich_text"
+            },
+            {
+              "key": "出工人數|number",
+              "numberValue": "={{ Number($json.workers) }}"
+            },
+            {
+              "key": "機具使用|rich_text"
+            },
+            {
+              "key": "與廠商溝通協調記錄|rich_text"
+            },
+            {
+              "key": "其他重要事項記錄|rich_text"
+            },
+            {
+              "key": "施工取樣試驗記錄|rich_text"
+            },
+            {
+              "key": "品質數量檢查記錄|rich_text"
+            },
+            {
+              "key": "照片連結|rich_text"
+            },
+            {
+              "key": "填寫語言|select",
+              "selectValue": "={{ $json.language === 'th' ? '泰文' : '英文' }}"
+            },
+            {
+              "key": "LINE填寫人|rich_text"
+            },
+            {
+              "key": "LINE UserID|rich_text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5ec072a-65c0-40c1-9db7-fb721701136c",
+      "name": "Notion: Save Report",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1600,
+        1296
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "kLmoloeh6ugtFE1g",
+          "name": "Notion2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.lineBody }}",
+        "options": {}
+      },
+      "id": "241181c7-e7e6-45c1-9ed5-e29b54e64c09",
+      "name": "LINE → Contractor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2048,
+        1200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EdfUyXtDiEAQPbKK",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"to\": 'Ubf65144da2093a2cb9e01528d773413f', \"messages\": [{ \"type\": \"text\", \"text\": $('Parse & Format').first().json.jerryMsg }] }) }}",
+        "options": {}
+      },
+      "id": "8e6a9be8-f515-42cd-9b66-87fe5b2af7dc",
+      "name": "LINE → Jerry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1824,
+        1392
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EdfUyXtDiEAQPbKK",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const contractorMsg = $('Parse & Format').first().json.contractorMsg;\nconst lineUserId = $('Webhook').first().json.body.lineUserId;\n\nreturn [{\n  json: {\n    lineBody: JSON.stringify({\n      to: lineUserId,\n      messages: [{ type: \"text\", text: contractorMsg }]\n    })\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        1200
+      ],
+      "id": "0d8dd71a-a7b4-4f9e-af44-2c87f8f36a0d",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "jerry-hsieh.app.n8n.cloud",
+            "user-agent": "Mozilla/5.0 (Linux; Android 16; CPH2811 Build/AP3A.240617.008; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/149.0.7827.91 Mobile Safari/537.36 Line/26.9.0 LIFF",
+            "content-length": "624",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "accept-language": "zh-TW,zh;q=0.9,th-TH;q=0.8,th;q=0.7,en-US;q=0.6,en;q=0.5",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "83.118.54.114",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "TH",
+            "cf-ray": "a13334807d373150-BKK",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "origin": "https://chaiowei.github.io",
+            "priority": "u=1, i",
+            "referer": "https://chaiowei.github.io/",
+            "sec-ch-ua": "\"Android WebView\";v=\"149\", \"Chromium\";v=\"149\", \"Not)A;Brand\";v=\"24\"",
+            "sec-ch-ua-mobile": "?1",
+            "sec-ch-ua-platform": "\"Android\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "83.118.54.114, 104.22.95.143",
+            "x-forwarded-host": "jerry-hsieh.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-69-774f776884-sjpnd",
+            "x-is-trusted": "yes",
+            "x-real-ip": "83.118.54.114",
+            "x-requested-with": "jp.naver.line.android"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "supervisor": "謝喬幃/Jerry_HSIEH",
+            "projectName": "Project A",
+            "constructionArea": "Hhh",
+            "contractor": "MT Engineering",
+            "date": "2026-06-29",
+            "morningWeather": "rainy",
+            "afternoonWeather": "sunny",
+            "constructionLocation": "Hhh",
+            "constructionItems": "Jjj",
+            "workers": "25",
+            "materialsUsed": "",
+            "equipment": "",
+            "communication": "",
+            "otherNotes": "",
+            "samplingTests": "",
+            "qualityInspection": "",
+            "lineUserId": "U11eb62b76698f12f07f4435abc808bc4",
+            "lineDisplayName": "喬幃",
+            "language": "en",
+            "submittedAt": "2026-06-29T07:26:48.282Z",
+            "photoUrls": [
+              "https://i.ibb.co/GfVdzMcn/5145c132648b.jpg",
+              "https://i.ibb.co/whn5GvGz/5366ac4d1691.jpg"
+            ],
+            "photoCount": 2
+          },
+          "webhookUrl": "https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data": {
+      "main": [
+        [
+          {
+            "node": "Gemini API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini API": {
+      "main": [
+        [
+          {
+            "node": "Parse & Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Format": {
+      "main": [
+        [
+          {
+            "node": "Notion: Save Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion: Save Report": {
+      "main": [
+        [
+          {
+            "node": "LINE → Jerry",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "LINE → Contractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "f36f18c9-fdf5-4b3b-b78c-3111e23670c4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19324eef6ef6ee8cedb30e38298eed3255cf4c84b5e75a4495f95d008351b787"
+  },
+  "id": "OCwh63R7TRuPgdDj",
+  "tags": []
+}
