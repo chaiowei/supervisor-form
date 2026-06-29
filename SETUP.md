@@ -63,31 +63,36 @@ n8n Cloud Webhook
 
 ---
 
-### 步驟 1：n8n 工作流程憑證設定
+### 步驟 1：n8n 設定（兩部分：Credentials + Variables）
 
-前往匯入後的 Supervisor Daily Report workflow URL
+前往 Supervisor Daily Report workflow
+
+#### 1-A：Credentials（憑證）— 在節點上設定
 
 **Notion: Save Report 節點**
-- 點擊節點 → Credential → 選擇 **Notion2**（已存在）
+- 點擊節點 → Credential → 選擇 **Notion2**
 
-**Gemini API 節點**
-- 點擊節點 → Credential → Create New
-- 類型：**Query Auth**
-- Name: `key`
-- Value: `（你的 Gemini API Key）`  
-  → 從 Notion 筆記「步驟三」取得
+**Notion: Get Options 節點**（form-options 鏈的第二個節點）
+- 點擊節點 → Credential → 選擇 **Notion2**
 
-**LINE → Contractor 節點 & LINE → Jerry 節點（兩個都要設）**
-- 點擊節點 → Credential → Create New
-- 類型：**Header Auth**
-- Name: `Authorization`
-- Value: `Bearer （你的 LINE Channel Access Token）`  
-  → 從 LINE Developers Console → Messaging API → Channel access token 取得
+---
 
-**LINE → Jerry 節點 JSON body**
-- 找到 `REPLACE_WITH_JERRY_LINE_USER_ID`
-- 替換為你的 LINE User ID  
-  → 取得方式：傳一則訊息到你的 LINE OA，n8n Webhook 會收到 userId
+#### 1-B：Variables（實例變數）— ⚠️ 不是在節點上設，是在 n8n 設定頁
+
+> Gemini 和 LINE 節點使用 `$vars.*` 讀取變數，**不是** 從節點 Credential 讀。
+
+1. 前往 n8n 左側選單 → **Settings** → **Variables**
+2. 新增以下四個變數：
+
+| Variable 名稱 | 值 |
+|---|---|
+| `GEMINI_API_KEY` | 你的 Gemini API Key |
+| `LINE_CHANNEL_ACCESS_TOKEN` | 你的 LINE Channel Access Token |
+| `JERRY_LINE_USER_ID` | 你的個人 LINE User ID（見下方取得方式）|
+
+> **取得 Jerry LINE User ID**：傳一則訊息給你的 LINE OA，在 n8n executions log 找 `lineUserId` 欄位
+
+---
 
 ---
 

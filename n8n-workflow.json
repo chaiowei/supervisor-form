@@ -62,7 +62,7 @@
       "parameters": {
         "resource": "databasePage",
         "operation": "create",
-        "databaseId": "={{ $vars.NOTION_DATABASE_ID }}",
+        "databaseId": "58c0c3ed5e9a476abd0c4047666d0155",
         "title": "={{ $json.date + ' | ' + $json.contractor + ' | ' + $json.projectName }}",
         "propertiesUi": {
           "propertyValues": [
