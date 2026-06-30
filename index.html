@@ -55,24 +55,24 @@
       box-shadow: var(--shadow);
     }
     .sec-title {
-      font-size: 11px; font-weight: 700;
+      font-size: 13px; font-weight: 700;
       color: var(--green); text-transform: uppercase; letter-spacing: 0.6px;
       border-bottom: 2px solid #e6f4e6;
       padding-bottom: 8px; margin-bottom: 16px;
     }
     /* Fields */
-    .field { margin-bottom: 16px; }
+    .field { margin-bottom: 18px; }
     .field:last-child { margin-bottom: 0; }
     label {
-      display: block; font-size: 13px; font-weight: 600;
-      color: var(--text); margin-bottom: 6px;
+      display: block; font-size: 15px; font-weight: 600;
+      color: var(--text); margin-bottom: 8px;
     }
     label .req { color: var(--red); margin-left: 1px; }
-    label .hint { display: block; font-weight: 400; color: var(--muted); font-size: 11px; margin-top: 2px; }
+    label .hint { display: block; font-weight: 400; color: var(--muted); font-size: 13px; margin-top: 3px; }
     input[type="text"], input[type="number"], input[type="date"], select, textarea {
-      width: 100%; padding: 11px 13px;
+      width: 100%; padding: 13px 14px;
       border: 1.5px solid var(--border); border-radius: 9px;
-      font-size: 15px; font-family: inherit; color: var(--text);
+      font-size: 16px; font-family: inherit; color: var(--text);
       background: #fafdf9;
       transition: border-color 0.15s, box-shadow 0.15s;
       -webkit-appearance: none; appearance: none;
@@ -246,12 +246,22 @@
           <div class="err-msg" id="e-constructionItems">Required / จำเป็น</div>
         </div>
 
+        <div class="field">
+          <label>
+            <span id="l-tomorrowPlan">Planned Work for Tomorrow</span>
+            <span class="hint" id="h-tomorrowPlan">Describe tomorrow's planned tasks</span>
+          </label>
+          <textarea name="tomorrowPlan" rows="3"></textarea>
+        </div>
+
         <div class="field" id="f-workers">
           <label>
             <span id="l-workers">Number of Workers</span><span class="req">*</span>
             <span class="hint" id="h-workers">Total on-site today</span>
           </label>
-          <input type="number" name="workers" min="1" max="9999" step="1" inputmode="numeric" id="i-workers" oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value<1&&this.value!=='')this.value=1;">
+          <input type="number" name="workers" min="1" max="9999" step="1" inputmode="numeric" id="i-workers"
+            onkeydown="return ![69,101,190,188,189,107,109].includes(event.keyCode)"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value!==''&&(this.value<1||!Number.isInteger(+this.value)))this.value=Math.max(1,Math.floor(+this.value))">
           <div class="err-msg" id="e-workers">Required / จำเป็น</div>
         </div>
       </div>
@@ -386,7 +396,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 const T = {
   en: {
     hdrTitle: 'Daily Work Log',
-    hdrSub: 'บันทึกงานประจำวัน',
+    hdrSub: 'บันทึกงานประจำวัน / 監工日誌',
     sec1: 'Basic Information',
     sec2: 'Weather',
     sec3: 'Work Details',
@@ -402,10 +412,12 @@ const T = {
     'l-afternoon': 'Afternoon 🌤️',
     'l-constructionLocation': 'Construction Location',
     'h-constructionLocation': 'Detailed location within the area',
-    'l-constructionItems': 'Construction Items',
+    'l-constructionItems': 'Construction Items (Today)',
     'h-constructionItems': "Today's work tasks",
+    'l-tomorrowPlan': 'Planned Work for Tomorrow',
+    'h-tomorrowPlan': "Describe tomorrow's planned tasks",
     'l-workers': 'Number of Workers',
-    'h-workers': 'Total workers on site today',
+    'h-workers': 'Total workers on site today (whole number)',
     'l-materialsUsed': 'Materials Used',
     'l-equipment': 'Equipment Used',
     'l-communication': 'Communication with Contractor',
@@ -431,7 +443,7 @@ const T = {
   },
   th: {
     hdrTitle: 'บันทึกงานประจำวัน',
-    hdrSub: 'Daily Work Log',
+    hdrSub: 'Daily Work Log / 監工日誌',
     sec1: 'ข้อมูลพื้นฐาน',
     sec2: 'สภาพอากาศ',
     sec3: 'รายละเอียดงาน',
@@ -447,10 +459,12 @@ const T = {
     'l-afternoon': 'บ่าย 🌤️',
     'l-constructionLocation': 'ตำแหน่งที่ก่อสร้าง',
     'h-constructionLocation': 'ระบุตำแหน่งที่แน่นอนในพื้นที่',
-    'l-constructionItems': 'รายการงานก่อสร้าง',
+    'l-constructionItems': 'รายการงานก่อสร้าง (วันนี้)',
     'h-constructionItems': 'งานที่ทำในวันนี้',
+    'l-tomorrowPlan': 'แผนงานพรุ่งนี้',
+    'h-tomorrowPlan': 'ระบุงานที่วางแผนสำหรับพรุ่งนี้',
     'l-workers': 'จำนวนคนงาน',
-    'h-workers': 'จำนวนคนงานทั้งหมดวันนี้',
+    'h-workers': 'จำนวนคนงานทั้งหมดวันนี้ (จำนวนเต็ม)',
     'l-materialsUsed': 'วัสดุที่ใช้',
     'l-equipment': 'เครื่องจักรและเครื่องมือที่ใช้',
     'l-communication': 'บันทึกการประสานงานกับผู้รับเหมา',
@@ -472,6 +486,53 @@ const T = {
     retryBtn: 'ลองใหม่',
     uploading: (n, t) => `กำลังอัปโหลดรูป ${n}/${t}...`,
     submitting: 'กำลังส่ง...',
+    langBtn: '中文',
+  },
+  zh: {
+    hdrTitle: '監工人員工作日誌',
+    hdrSub: 'Daily Work Log / บันทึกงานประจำวัน',
+    sec1: '基本資料',
+    sec2: '天氣狀況',
+    sec3: '工作詳情',
+    sec4: '材料與機具',
+    sec5: '記錄與備註',
+    sec6: '現場照片',
+    'l-supervisor': '監工人員',
+    'l-projectName': '工程名稱',
+    'l-constructionArea': '施工廠區',
+    'l-contractor': '施工廠商',
+    'l-date': '日期',
+    'l-morning': '上午 ☀️',
+    'l-afternoon': '下午 🌤️',
+    'l-constructionLocation': '施工部位',
+    'h-constructionLocation': '詳細填寫施工位置',
+    'l-constructionItems': '施工項目（今日）',
+    'h-constructionItems': '今日施工工作內容',
+    'l-tomorrowPlan': '明日預計工作',
+    'h-tomorrowPlan': '填寫明日計劃進行的工作',
+    'l-workers': '出工人數',
+    'h-workers': '今日現場工人總人數（正整數）',
+    'l-materialsUsed': '供給材料使用',
+    'l-equipment': '機具使用',
+    'l-communication': '與廠商溝通協調記錄',
+    'l-otherNotes': '其他重要事項記錄',
+    'l-samplingTests': '施工取樣試驗記錄',
+    'l-qualityInspection': '品質、數量檢查記錄',
+    'l-photoLabel': '點擊上傳現場照片（最多 10 張）',
+    'opt-sel': '-- 請選擇 --',
+    'w-sunny-1': '☀️ 晴天', 'w-rainy-1': '🌧️ 下雨',
+    'w-sunny-2': '☀️ 晴天', 'w-rainy-2': '🌧️ 下雨',
+    'i-constructionArea': '例如：A棟、3區',
+    'i-contractor': '輸入廠商名稱',
+    'i-workers': '',
+    submitLabel: '送出報告',
+    successTitle: '送出成功！',
+    successMsg: '日誌已成功送出，您即將透過 LINE 收到確認訊息。',
+    errorTitle: '送出失敗',
+    errorMsg: '請重試。若問題持續發生，請聯絡監工人員。',
+    retryBtn: '重新送出',
+    uploading: (n, t) => `正在上傳照片 ${n}/${t}...`,
+    submitting: '送出中...',
     langBtn: 'EN',
   }
 };
@@ -505,7 +566,7 @@ async function initLiff() {
 
 // ── Language ─────────────────────────────────────────────
 function toggleLang() {
-  lang = lang === 'en' ? 'th' : 'en';
+  lang = lang === 'en' ? 'th' : lang === 'th' ? 'zh' : 'en';
   localStorage.setItem('wl_lang', lang);
   applyLang();
 }
@@ -518,6 +579,7 @@ function applyLang() {
     'l-morning','l-afternoon',
     'l-constructionLocation','h-constructionLocation',
     'l-constructionItems','h-constructionItems',
+    'l-tomorrowPlan','h-tomorrowPlan',
     'l-workers','h-workers',
     'l-materialsUsed','l-equipment','l-communication','l-otherNotes',
     'l-samplingTests','l-qualityInspection','l-photoLabel',
