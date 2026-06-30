@@ -18,7 +18,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const raw = $input.first().json;\nconst d = raw.body || raw;\nconst now = new Date();\nconst submitTime = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });\nconst weekday = new Date(d.date + 'T00:00:00').toLocaleDateString('zh-TW', { weekday: 'long' });\nconst safeStr = s => (s || '').slice(0, 30);\nconst fileName = `${d.date}_${safeStr(d.contractor)}_${safeStr(d.projectName)}.pdf`;\nconst photoUrls = d.photoUrls || [];\nreturn [{ json: { ...d, submitTime, weekday, fileName, photoUrls, photoCount: photoUrls.length } }];"
+        "jsCode": "const raw = $input.first().json;\nconst d = raw.body || raw;\nconst now = new Date();\nconst submitTime = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });\nconst localeMap = { en: 'en-US', th: 'th-TH', zh: 'zh-TW' };\nconst dateObj = new Date(d.date + 'T00:00:00');\nconst weekday = dateObj.toLocaleDateString(localeMap[d.language] || 'en-US', { weekday: 'long' });\nconst weekdayZH = dateObj.toLocaleDateString('zh-TW', { weekday: 'long' });\nconst safeStr = s => (s || '').slice(0, 30);\nconst fileName = `${d.date}_${safeStr(d.contractor)}_${safeStr(d.projectName)}.pdf`;\nconst photoUrls = d.photoUrls || [];\nreturn [{ json: { ...d, submitTime, weekday, weekdayZH, fileName, photoUrls, photoCount: photoUrls.length } }];"
       },
       "id": "n2-prepare",
       "name": "Prepare Data",
@@ -28,14 +28,47 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: 'Translate these construction report fields to Traditional Chinese. Return ONLY a valid JSON object with exactly these same keys. Do NOT translate proper nouns, company names, numbers, measurements. If a field is empty or already in Chinese, return it unchanged.\\n\\nInput:\\n' + JSON.stringify({ constructionLocation: $json.constructionLocation || '', constructionItems: $json.constructionItems || '', tomorrowPlan: $json.tomorrowPlan || '', materialsUsed: $json.materialsUsed || '', equipment: $json.equipment || '', communication: $json.communication || '', otherNotes: $json.otherNotes || '', samplingTests: $json.samplingTests || '', qualityInspection: $json.qualityInspection || '' }) }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }) }}",
+        "options": {}
+      },
+      "id": "n2b-translate",
+      "name": "Translate to ZH",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 340],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "continueOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const d = $input.first().json;\nconst lang = d.language || 'zh';\nconst LBL = {\n  en: {\n    title: 'Work Daily Report',\n    projectName: 'Project Name', constructionArea: 'Construction Area',\n    date: 'Date', weekday: 'Day',\n    weather: 'Weather', morning: 'AM', afternoon: 'PM',\n    time: 'Submit Time',\n    constructionLocation: 'Construction Location',\n    workContent: 'Work Content',\n    constructionItems: 'Construction Items (Today)',\n    tomorrowPlan: \"Tomorrow's Plan\",\n    materialsUsed: 'Materials Used', equipment: 'Equipment Used',\n    workers: 'Workers', persons: '',\n    communication: 'Contractor Communication',\n    otherNotes: 'Other Notes',\n    samplingTests: 'Sampling & Testing Records',\n    qualityInspection: 'Quality & Qty Inspection',\n    supervisor: 'Unit Supervisor', inspector: 'Inspector'\n  },\n  th: {\n    title: 'บันทึกงานประจำวัน',\n    projectName: 'ชื่อโครงการ', constructionArea: 'พื้นที่ก่อสร้าง',\n    date: 'วันที่', weekday: 'วัน',\n    weather: 'สภาพอากาศ', morning: 'เช้า', afternoon: 'บ่าย',\n    time: 'เวลาที่ส่ง',\n    constructionLocation: 'ตำแหน่งก่อสร้าง',\n    workContent: 'เนื้อหางาน',\n    constructionItems: 'รายการงาน (วันนี้)',\n    tomorrowPlan: 'แผนงานพรุ่งนี้',\n    materialsUsed: 'วัสดุที่ใช้', equipment: 'เครื่องมือ',\n    workers: 'จำนวนคน', persons: 'คน',\n    communication: 'การสื่อสารกับผู้รับเหมา',\n    otherNotes: 'หมายเหตุสำคัญ',\n    samplingTests: 'การเก็บตัวอย่าง',\n    qualityInspection: 'การตรวจสอบคุณภาพ',\n    supervisor: 'ผู้จัดการ', inspector: 'ผู้ตรวจสอบ'\n  },\n  zh: {\n    title: '監工人員工作日誌',\n    projectName: '工程名稱', constructionArea: '施工廠區',\n    date: '日期', weekday: '星期',\n    weather: '天氣', morning: '上午', afternoon: '下午',\n    time: '時間',\n    constructionLocation: '施工部位',\n    workContent: '工作內容',\n    constructionItems: '施工項目（今日）',\n    tomorrowPlan: '明日預計工作',\n    materialsUsed: '供給材料使用', equipment: '機具使用',\n    workers: '出工人數', persons: '人',\n    communication: '與廠商溝通協調記錄',\n    otherNotes: '其他重要事項記錄',\n    samplingTests: '施工取樣試驗記錄',\n    qualityInspection: '品質、數量檢查記錄',\n    supervisor: '單位主管', inspector: '監工人員'\n  }\n};\nconst L = LBL[lang] || LBL.zh;\nconst LZH = LBL.zh;\nconst photoUrls = d.photoUrls || [];\nconst esc = s => String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\nlet photoHtml = '';\nif (photoUrls.length > 0) {\n  for (let i = 0; i < photoUrls.length; i += 4) {\n    const chunk = photoUrls.slice(i, i + 4);\n    const cells = chunk.map(url => `<td style='width:50%;padding:4px'><img src='${url}' style='width:100%;height:auto'></td>`);\n    while (cells.length < 4) cells.push(`<td style='width:50%;padding:4px'></td>`);\n    photoHtml += `<table style='width:100%;border-collapse:collapse;margin-top:8px;page-break-inside:avoid'><tr>${cells.slice(0,2).join('')}</tr><tr>${cells.slice(2,4).join('')}</tr></table>`;\n  }\n}\nfunction buildHtml(Lb) {\n  return `<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:Arial,'Noto Sans Thai',sans-serif;font-size:10pt;margin:0}.t{text-align:center;font-weight:bold;margin-bottom:4px}table.m{width:100%;border-collapse:collapse}table.m td{border:1px solid #333;padding:4px 6px;vertical-align:top}.sh{background:#ddd;font-weight:bold;text-align:center}.c{min-height:40px;white-space:pre-wrap}</style></head><body><div class='t' style='font-size:14pt'>ECO INFINIC</div><div class='t' style='font-size:12pt;margin-bottom:8px'>${Lb.title}</div><table class='m'><tr><td style='width:12%'><b>${Lb.projectName}</b></td><td style='width:38%'>${esc(d.projectName)}</td><td style='width:12%'><b>${Lb.constructionArea}</b></td><td style='width:38%'>${esc(d.constructionArea)}</td></tr><tr><td><b>${Lb.date}</b></td><td>${esc(d.date)}</td><td><b>${Lb.weekday}</b></td><td>${esc(d.weekday)}</td></tr><tr><td><b>${Lb.weather}</b></td><td colspan='3'>${Lb.morning}: ${esc(d.morningWeather)} / ${Lb.afternoon}: ${esc(d.afternoonWeather)}</td></tr><tr><td><b>${Lb.time}</b></td><td colspan='3'>${esc(d.submitTime)}</td></tr><tr><td class='sh' colspan='4'>${Lb.constructionLocation}</td></tr><tr><td colspan='4' class='c'>${esc(d.constructionLocation)}</td></tr><tr><td class='sh' colspan='4'>${Lb.workContent}</td></tr><tr><td><b>${Lb.constructionItems}</b></td><td colspan='3' class='c' style='min-height:60px'>${esc(d.constructionItems)}</td></tr><tr><td><b>${Lb.tomorrowPlan}</b></td><td colspan='3' class='c' style='min-height:50px'>${esc(d.tomorrowPlan)}</td></tr><tr><td><b>${Lb.materialsUsed}</b></td><td>${esc(d.materialsUsed)}</td><td><b>${Lb.equipment}</b></td><td>${esc(d.equipment)}</td></tr><tr><td><b>${Lb.workers}</b></td><td colspan='3'>${esc(d.workers)} ${Lb.persons}</td></tr><tr><td class='sh' colspan='4'>${Lb.communication}</td></tr><tr><td colspan='4' class='c'>${esc(d.communication)}</td></tr><tr><td class='sh' colspan='4'>${Lb.otherNotes}</td></tr><tr><td colspan='4' class='c'>${esc(d.otherNotes)}</td></tr><tr><td colspan='2'><b>${Lb.samplingTests}</b></td><td colspan='2'><b>${Lb.qualityInspection}</b></td></tr><tr><td colspan='2' class='c'>${esc(d.samplingTests)}</td><td colspan='2' class='c'>${esc(d.qualityInspection)}</td></tr><tr><td><b>${Lb.supervisor}</b></td><td></td><td><b>${Lb.inspector}</b></td><td>${esc(d.supervisor)}</td></tr></table>${photoHtml}</body></html>`;\n}\nconst html = buildHtml(L);\nconst htmlZH = buildHtml(LZH);\nreturn [{ json: { ...d, pdfHtml: html, pdfHtmlZH: htmlZH } }];"
+        "jsCode": "const d = $('Prepare Data').first().json;\nconst lang = d.language || 'en';\nconst gemini = $input.first().json;\nlet dZH = { ...d, weekday: d.weekdayZH };\ntry {\n  const text = gemini.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n  const translated = JSON.parse(text);\n  dZH = { ...d, ...translated, weekday: d.weekdayZH };\n} catch(e) {}\nconst W = { en: { sunny: '☀️ Sunny', rainy: '🌧️ Rainy' }, th: { sunny: '☀️ แดดออก', rainy: '🌧️ ฝนตก' }, zh: { sunny: '☀️ 晴天', rainy: '🌧️ 下雨' } };\nconst wC = W[lang] || W.en;\nd.mW = wC[d.morningWeather] || d.morningWeather || '-';\nd.aW = wC[d.afternoonWeather] || d.afternoonWeather || '-';\ndZH.mW = W.zh[d.morningWeather] || d.morningWeather || '-';\ndZH.aW = W.zh[d.afternoonWeather] || d.afternoonWeather || '-';\nconst LBL = {\n  en: { title: 'Work Daily Report', projectName: 'Project Name', constructionArea: 'Construction Area', date: 'Date', weekday: 'Day', weather: 'Weather', morning: 'AM', afternoon: 'PM', time: 'Submit Time', constructionLocation: 'Construction Location', workContent: 'Work Content', constructionItems: 'Construction Items (Today)', tomorrowPlan: \"Tomorrow's Plan\", materialsUsed: 'Materials Used', equipment: 'Equipment Used', workers: 'Workers', persons: '', communication: 'Contractor Communication', otherNotes: 'Other Notes', samplingTests: 'Sampling & Testing Records', qualityInspection: 'Quality & Qty Inspection', supervisor: 'Unit Supervisor', inspector: 'Inspector' },\n  th: { title: 'บันทึกงานประจำวัน', projectName: 'ชื่อโครงการ', constructionArea: 'พื้นที่ก่อสร้าง', date: 'วันที่', weekday: 'วัน', weather: 'สภาพอากาศ', morning: 'เช้า', afternoon: 'บ่าย', time: 'เวลาที่ส่ง', constructionLocation: 'ตำแหน่งก่อสร้าง', workContent: 'เนื้อหางาน', constructionItems: 'รายการงาน (วันนี้)', tomorrowPlan: 'แผนงานพรุ่งนี้', materialsUsed: 'วัสดุที่ใช้', equipment: 'เครื่องมือ', workers: 'จำนวนคน', persons: 'คน', communication: 'การสื่อสารกับผู้รับเหมา', otherNotes: 'หมายเหตุสำคัญ', samplingTests: 'การเก็บตัวอย่าง', qualityInspection: 'การตรวจสอบคุณภาพ', supervisor: 'ผู้จัดการ', inspector: 'ผู้ตรวจสอบ' },\n  zh: { title: '監工人員工作日誌', projectName: '工程名稱', constructionArea: '施工廠區', date: '日期', weekday: '星期', weather: '天氣', morning: '上午', afternoon: '下午', time: '時間', constructionLocation: '施工部位', workContent: '工作內容', constructionItems: '施工項目（今日）', tomorrowPlan: '明日預計工作', materialsUsed: '供給材料使用', equipment: '機具使用', workers: '出工人數', persons: '人', communication: '與廠商溝通協調記錄', otherNotes: '其他重要事項記錄', samplingTests: '施工取樣試驗記錄', qualityInspection: '品質、數量檢查記錄', supervisor: '單位主管', inspector: '監工人員' }\n};\nconst L = LBL[lang] || LBL.en;\nconst LZH = LBL.zh;\nconst photoUrls = d.photoUrls || [];\nconst esc = s => String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\nlet photoHtml = '';\nif (photoUrls.length > 0) {\n  for (let i = 0; i < photoUrls.length; i += 4) {\n    const chunk = photoUrls.slice(i, i + 4);\n    const cells = chunk.map(url => `<td style='width:50%;padding:4px'><img src='${url}' style='width:100%;height:auto'></td>`);\n    while (cells.length < 4) cells.push(`<td style='width:50%;padding:4px'></td>`);\n    photoHtml += `<table style='width:100%;border-collapse:collapse;margin-top:8px;page-break-inside:avoid'><tr>${cells.slice(0,2).join('')}</tr><tr>${cells.slice(2,4).join('')}</tr></table>`;\n  }\n}\nfunction buildHtml(Lb, data) {\n  return `<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:Arial,'Noto Sans Thai',sans-serif;font-size:10pt;margin:0}.t{text-align:center;font-weight:bold;margin-bottom:4px}table.m{width:100%;border-collapse:collapse}table.m td{border:1px solid #333;padding:4px 6px;vertical-align:top}.sh{background:#ddd;font-weight:bold;text-align:center}.c{min-height:40px;white-space:pre-wrap}</style></head><body><div class='t' style='font-size:14pt'>ECO INFINIC</div><div class='t' style='font-size:12pt;margin-bottom:8px'>${Lb.title}</div><table class='m'><tr><td style='width:12%'><b>${Lb.projectName}</b></td><td style='width:38%'>${esc(data.projectName)}</td><td style='width:12%'><b>${Lb.constructionArea}</b></td><td style='width:38%'>${esc(data.constructionArea)}</td></tr><tr><td><b>${Lb.date}</b></td><td>${esc(data.date)}</td><td><b>${Lb.weekday}</b></td><td>${esc(data.weekday)}</td></tr><tr><td><b>${Lb.weather}</b></td><td colspan='3'>${Lb.morning}: ${esc(data.mW)} / ${Lb.afternoon}: ${esc(data.aW)}</td></tr><tr><td><b>${Lb.time}</b></td><td colspan='3'>${esc(data.submitTime)}</td></tr><tr><td class='sh' colspan='4'>${Lb.constructionLocation}</td></tr><tr><td colspan='4' class='c'>${esc(data.constructionLocation)}</td></tr><tr><td class='sh' colspan='4'>${Lb.workContent}</td></tr><tr><td><b>${Lb.constructionItems}</b></td><td colspan='3' class='c' style='min-height:60px'>${esc(data.constructionItems)}</td></tr><tr><td><b>${Lb.tomorrowPlan}</b></td><td colspan='3' class='c' style='min-height:50px'>${esc(data.tomorrowPlan)}</td></tr><tr><td><b>${Lb.materialsUsed}</b></td><td>${esc(data.materialsUsed)}</td><td><b>${Lb.equipment}</b></td><td>${esc(data.equipment)}</td></tr><tr><td><b>${Lb.workers}</b></td><td colspan='3'>${esc(data.workers)} ${Lb.persons}</td></tr><tr><td class='sh' colspan='4'>${Lb.communication}</td></tr><tr><td colspan='4' class='c'>${esc(data.communication)}</td></tr><tr><td class='sh' colspan='4'>${Lb.otherNotes}</td></tr><tr><td colspan='4' class='c'>${esc(data.otherNotes)}</td></tr><tr><td colspan='2'><b>${Lb.samplingTests}</b></td><td colspan='2'><b>${Lb.qualityInspection}</b></td></tr><tr><td colspan='2' class='c'>${esc(data.samplingTests)}</td><td colspan='2' class='c'>${esc(data.qualityInspection)}</td></tr><tr><td><b>${Lb.supervisor}</b></td><td></td><td><b>${Lb.inspector}</b></td><td>${esc(data.supervisor)}</td></tr></table>${photoHtml}</body></html>`;\n}\nconst html = buildHtml(L, d);\nconst htmlZH = buildHtml(LZH, dZH);\nreturn [{ json: { ...d, pdfHtml: html, pdfHtmlZH: htmlZH, translatedZH: dZH } }];"
       },
       "id": "n3-html",
       "name": "Generate PDF HTML",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 340]
+      "position": [900, 340]
     },
     {
       "parameters": {
@@ -58,7 +91,7 @@
       "name": "PDF.co API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 340],
+      "position": [1120, 340],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
@@ -85,7 +118,7 @@
       "name": "Download PDF",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 340]
+      "position": [1340, 340]
     },
     {
       "parameters": {
@@ -110,7 +143,7 @@
       "name": "Google Drive Upload",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [1340, 340],
+      "position": [1560, 340],
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "",
@@ -131,16 +164,15 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "raw",
-        "rawContentType": "application/json",
-        "body": "{\"type\":\"anyone\",\"role\":\"reader\"}",
+        "specifyBody": "json",
+        "jsonBody": "={{ { type: 'anyone', role: 'reader' } }}",
         "options": {}
       },
       "id": "n7-permission",
       "name": "Set Drive Permission",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1560, 340],
+      "position": [1780, 340],
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "",
@@ -148,6 +180,7 @@
         }
       }
     },
+
     {
       "parameters": {
         "method": "POST",
@@ -169,7 +202,7 @@
       "name": "PDF.co API (ZH)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 340],
+      "position": [2000, 340],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
@@ -196,7 +229,7 @@
       "name": "Download PDF (ZH)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2000, 340]
+      "position": [2220, 340]
     },
     {
       "parameters": {
@@ -221,7 +254,7 @@
       "name": "Google Drive Upload (ZH)",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [2220, 340],
+      "position": [2440, 340],
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "",
@@ -242,16 +275,15 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "raw",
-        "rawContentType": "application/json",
-        "body": "{\"type\":\"anyone\",\"role\":\"reader\"}",
+        "specifyBody": "json",
+        "jsonBody": "={{ { type: 'anyone', role: 'reader' } }}",
         "options": {}
       },
       "id": "n7b-permission-zh",
       "name": "Set Drive Permission (ZH)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2440, 340],
+      "position": [2660, 340],
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "",
@@ -262,13 +294,13 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const prepData = $('Prepare Data').first().json;\nconst driveFileId = $('Google Drive Upload').first().json.id;\nconst driveUrl = 'https://drive.google.com/file/d/' + driveFileId + '/view';\nconst driveFileIdZH = $('Google Drive Upload (ZH)').first().json.id;\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveFileIdZH + '/view';\nconst lang = prepData.language || 'en';\nconst CL = {\n  en: { title: 'Work Report Ready', date: 'Date', project: 'Project', photos: 'Photos', download: 'Download PDF Report' },\n  th: { title: 'รายงานงานพร้อมแล้ว', date: 'วันที่', project: 'โครงการ', photos: 'รูปภาพ', download: 'ดาวน์โหลดรายงาน PDF' },\n  zh: { title: '工作日誌已生成', date: '日期', project: '工程', photos: '照片', download: '下載 PDF 報告' }\n}[lang] || { title: 'Work Report Ready', date: 'Date', project: 'Project', photos: 'Photos', download: 'Download PDF Report' };\nconst contractorFlex = { to: prepData.lineUserId, messages: [{ type: 'flex', altText: CL.title, contents: { type: 'bubble', header: { type: 'box', layout: 'vertical', backgroundColor: '#1a73e8', contents: [{ type: 'text', text: CL.title, color: '#ffffff', weight: 'bold', size: 'lg' }] }, body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [{ type: 'text', text: CL.date + ': ' + prepData.date, size: 'sm', color: '#555555' }, { type: 'text', text: CL.project + ': ' + prepData.projectName, size: 'sm', color: '#555555' }, { type: 'text', text: CL.photos + ': ' + prepData.photoCount, size: 'sm', color: '#555555' }] }, footer: { type: 'box', layout: 'vertical', contents: [{ type: 'button', style: 'primary', color: '#1a73e8', action: { type: 'uri', label: CL.download, uri: driveUrl } }] } } }] };\nconst jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: '監工日誌報告已生成', contents: { type: 'bubble', header: { type: 'box', layout: 'vertical', backgroundColor: '#0d7a0d', contents: [{ type: 'text', text: '監工日誌報告已生成', color: '#ffffff', weight: 'bold', size: 'lg' }] }, body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [{ type: 'text', text: '日期: ' + prepData.date, size: 'sm', color: '#555555' }, { type: 'text', text: '工程: ' + prepData.projectName, size: 'sm', color: '#555555' }, { type: 'text', text: '廠商: ' + prepData.contractor, size: 'sm', color: '#555555' }, { type: 'text', text: '照片: ' + prepData.photoCount + ' 張', size: 'sm', color: '#555555' }] }, footer: { type: 'box', layout: 'vertical', contents: [{ type: 'button', style: 'primary', color: '#0d7a0d', action: { type: 'uri', label: '下載中文 PDF 報告', uri: driveUrlZH } }] } } }] };\nreturn [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex) } }];"
+        "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst driveFileId = $('Google Drive Upload').first().json.id;\nconst driveUrl = 'https://drive.google.com/file/d/' + driveFileId + '/view';\nconst driveFileIdZH = $('Google Drive Upload (ZH)').first().json.id;\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveFileIdZH + '/view';\nconst lang = d.language || 'en';\nconst W = { en: { sunny: '☀️ Sunny', rainy: '🌧️ Rainy' }, th: { sunny: '☀️ แดดออก', rainy: '🌧️ ฝนตก' }, zh: { sunny: '☀️ 晴天', rainy: '🌧️ 下雨' } };\nconst wC = W[lang] || W.en;\nconst mW = wC[d.morningWeather] || d.morningWeather || '-';\nconst aW = wC[d.afternoonWeather] || d.afternoonWeather || '-';\nconst mWZH = W.zh[d.morningWeather] || d.morningWeather || '-';\nconst aWZH = W.zh[d.afternoonWeather] || d.afternoonWeather || '-';\nconst CL = {\n  en: { title: '✅ Work Report Submitted', morning: 'AM', afternoon: 'PM', date: 'Date', project: 'Project', area: 'Area', weather: 'Weather', workers: 'Workers', location: '📍 Location', workDone: '🔨 Work Done', tomorrow: '📋 Tomorrow Plan', materials: '🧱 Materials', equipment: '⚙️ Equipment', comms: '💬 Communication', notes: '📝 Notes', sampling: '🧪 Sampling', quality: '✔️ Quality Check', download: '📥 Download PDF' },\n  th: { title: '✅ ส่งรายงานสำเร็จ', morning: 'เช้า', afternoon: 'บ่าย', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', weather: 'อากาศ', workers: 'คนงาน', location: '📍 ตำแหน่ง', workDone: '🔨 งานวันนี้', tomorrow: '📋 แผนพรุ่งนี้', materials: '🧱 วัสดุ', equipment: '⚙️ เครื่องมือ', comms: '💬 ประสานงาน', notes: '📝 หมายเหตุ', sampling: '🧪 ตัวอย่าง', quality: '✔️ ตรวจสอบ', download: '📥 ดาวน์โหลด PDF' },\n  zh: { title: '✅ 監工日誌已送出', morning: '上午', afternoon: '下午', date: '日期', project: '工程', area: '廠區', weather: '天氣', workers: '出工人數', location: '📍 施工部位', workDone: '🔨 今日施工', tomorrow: '📋 明日計畫', materials: '🧱 材料', equipment: '⚙️ 機具', comms: '💬 溝通記錄', notes: '📝 其他備注', sampling: '🧪 取樣記錄', quality: '✔️ 品質檢查', download: '📥 下載 PDF' }\n};\nconst cl = CL[lang] || CL.en;\nconst clZH = CL.zh;\nconst trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';\nfunction kv(label, value) {\n  return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };\n}\nfunction lbl(text) {\n  return { type: 'text', text: text, size: 'xs', color: '#1a73e8', weight: 'bold', margin: 'md' };\n}\nfunction txt(text) {\n  return { type: 'text', text: text, size: 'sm', color: '#333333', wrap: true, margin: 'xs' };\n}\nfunction sep() { return { type: 'separator', margin: 'sm', color: '#eeeeee' }; }\nfunction buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor) {\n  const body = [\n    kv(cl.date, data.date + ' (' + data.weekday + ')'),\n    kv(cl.project, trunc(data.projectName, 50)),\n    kv(cl.area, trunc(data.constructionArea, 50)),\n    kv(cl.weather, cl.morning + ': ' + mWeather + '  ' + cl.afternoon + ': ' + aWeather),\n    kv(cl.workers, String(data.workers || '-')),\n    sep(),\n    lbl(cl.location), txt(trunc(data.constructionLocation, 150)),\n    sep(),\n    lbl(cl.workDone), txt(trunc(data.constructionItems, 200))\n  ];\n  if (data.tomorrowPlan) { body.push(sep()); body.push(lbl(cl.tomorrow)); body.push(txt(trunc(data.tomorrowPlan, 150))); }\n  if (data.materialsUsed || data.equipment) {\n    body.push(sep());\n    if (data.materialsUsed) body.push(kv(cl.materials, trunc(data.materialsUsed, 100)));\n    if (data.equipment) body.push(kv(cl.equipment, trunc(data.equipment, 100)));\n  }\n  if (data.communication) { body.push(sep()); body.push(lbl(cl.comms)); body.push(txt(trunc(data.communication, 150))); }\n  if (data.samplingTests) { body.push(sep()); body.push(lbl(cl.sampling)); body.push(txt(trunc(data.samplingTests, 150))); }\n  if (data.qualityInspection) { body.push(sep()); body.push(lbl(cl.quality)); body.push(txt(trunc(data.qualityInspection, 150))); }\n  if (data.otherNotes) { body.push(sep()); body.push(lbl(cl.notes)); body.push(txt(trunc(data.otherNotes, 150))); }\n  return {\n    type: 'bubble',\n    header: { type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '14px', contents: [{ type: 'text', text: cl.title, color: '#ffffff', weight: 'bold', size: 'md', wrap: true }, { type: 'text', text: String(data.contractor || ''), color: '#ffffffcc', size: 'xs', margin: 'xs' }] },\n    body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: body },\n    footer: { type: 'box', layout: 'vertical', paddingAll: '10px', contents: [{ type: 'button', style: 'primary', color: headerColor, height: 'sm', action: { type: 'uri', label: cl.download, uri: pdfUrl } }] }\n  };\n}\nconst contractorBubble = buildFlex(cl, d, mW, aW, driveUrl, '#1a73e8');\nconst jerryBubble = buildFlex(clZH, dZH, mWZH, aWZH, driveUrlZH, '#0d7a0d');\nconst contractorFlex = { to: d.lineUserId, messages: [{ type: 'flex', altText: cl.title, contents: contractorBubble }] };\nconst jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: clZH.title, contents: jerryBubble }] };\nreturn [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex) } }];"
       },
       "id": "n8-messages",
       "name": "Build Messages",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2660, 340]
+      "position": [2880, 340]
     },
     {
       "parameters": {
@@ -291,7 +323,7 @@
       "name": "LINE → Contractor",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2880, 240],
+      "position": [3100, 240],
       "credentials": {
         "httpHeaderAuth": {
           "id": "",
@@ -320,7 +352,7 @@
       "name": "LINE → Jerry",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2880, 440],
+      "position": [3100, 440],
       "credentials": {
         "httpHeaderAuth": {
           "id": "",
@@ -334,6 +366,9 @@
       "main": [[{ "node": "Prepare Data", "type": "main", "index": 0 }]]
     },
     "Prepare Data": {
+      "main": [[{ "node": "Translate to ZH", "type": "main", "index": 0 }]]
+    },
+    "Translate to ZH": {
       "main": [[{ "node": "Generate PDF HTML", "type": "main", "index": 0 }]]
     },
     "Generate PDF HTML": {
@@ -372,8 +407,6 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1",
-    "saveManualExecutions": true
-  },
-  "tags": []
+    "executionOrder": "v1"
+  }
 }
