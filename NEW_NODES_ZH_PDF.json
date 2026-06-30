@@ -1,0 +1,113 @@
+[
+  {
+    "id": "n4b-pdfco-zh",
+    "name": "PDF.co API (ZH)",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [1780, 340],
+    "retryOnFail": true,
+    "maxTries": 3,
+    "waitBetweenTries": 5000,
+    "parameters": {
+      "method": "POST",
+      "url": "https://api.pdf.co/v1/pdf/convert/from/html",
+      "authentication": "genericCredentialType",
+      "genericAuthType": "httpHeaderAuth",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          { "name": "Content-Type", "value": "application/json" }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={{ JSON.stringify({ html: $('Generate PDF HTML').first().json.pdfHtmlZH, name: $('Generate PDF HTML').first().json.fileName.replace('.pdf', '_ZH.pdf'), async: false, margins: '15mm 15mm 15mm 15mm', paperSize: 'A4' }) }}",
+      "options": {}
+    },
+    "credentials": {
+      "httpHeaderAuth": {
+        "id": "",
+        "name": "PDF.co API Key"
+      }
+    }
+  },
+  {
+    "id": "n5b-download-zh",
+    "name": "Download PDF (ZH)",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [2000, 340],
+    "parameters": {
+      "url": "={{ $json.url }}",
+      "options": {
+        "response": {
+          "response": {
+            "responseFormat": "file",
+            "outputPropertyName": "data"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "n6b-drive-zh",
+    "name": "Google Drive Upload (ZH)",
+    "type": "n8n-nodes-base.googleDrive",
+    "typeVersion": 3,
+    "position": [2220, 340],
+    "parameters": {
+      "resource": "file",
+      "operation": "upload",
+      "name": "={{ $('Generate PDF HTML').first().json.fileName.replace('.pdf', '_ZH.pdf') }}",
+      "driveId": {
+        "__rl": true,
+        "value": "My Drive",
+        "mode": "list",
+        "cachedResultName": "My Drive"
+      },
+      "folderId": {
+        "__rl": true,
+        "value": "1wcJmQkM_lSpZW5Nw-1TPZ51Dq-BP1D37",
+        "mode": "id"
+      },
+      "binaryPropertyName": "data",
+      "options": {}
+    },
+    "credentials": {
+      "googleDriveOAuth2Api": {
+        "id": "",
+        "name": "Google Drive account"
+      }
+    }
+  },
+  {
+    "id": "n7b-permission-zh",
+    "name": "Set Drive Permission (ZH)",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [2440, 340],
+    "parameters": {
+      "method": "POST",
+      "url": "={{ 'https://www.googleapis.com/drive/v3/files/' + $json.id + '/permissions' }}",
+      "authentication": "predefinedCredentialType",
+      "nodeCredentialType": "googleDriveOAuth2Api",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          { "name": "Content-Type", "value": "application/json" }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "raw",
+      "rawContentType": "application/json",
+      "body": "{\"type\":\"anyone\",\"role\":\"reader\"}",
+      "options": {}
+    },
+    "credentials": {
+      "googleDriveOAuth2Api": {
+        "id": "",
+        "name": "Google Drive account"
+      }
+    }
+  }
+]

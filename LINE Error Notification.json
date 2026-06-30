@@ -1,0 +1,58 @@
+{
+  "name": "Supervisor Error Notification",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "err-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 340]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $input.first().json;\nconst execId = e.execution?.id || 'unknown';\nconst execUrl = e.execution?.url || `https://jerry-hsieh.app.n8n.cloud/execution/${execId}`;\nconst wfName = e.workflow?.name || 'Supervisor Daily Report';\nconst nodeName = e.execution?.lastNodeExecuted || e.execution?.error?.node?.name || '未知節點';\nconst errMsg = e.execution?.error?.message || '未知錯誤';\n\nconst msg = [\n  '⚠️ 監工日誌系統發生錯誤',\n  '',\n  `🔴 工作流程：${wfName}`,\n  `❌ 失敗節點：${nodeName}`,\n  `📋 錯誤訊息：${errMsg.substring(0, 100)}`,\n  '',\n  '🔁 點擊重試：',\n  execUrl\n].join('\\n');\n\nconst flex = {\n  to: 'Ubf65144da2093a2cb9e01528d773413f',\n  messages: [{\n    type: 'flex',\n    altText: '⚠️ 監工日誌系統發生錯誤',\n    contents: {\n      type: 'bubble',\n      header: {\n        type: 'box',\n        layout: 'vertical',\n        contents: [{\n          type: 'text',\n          text: '⚠️ 系統錯誤通知',\n          weight: 'bold',\n          size: 'lg',\n          color: '#ffffff'\n        }],\n        backgroundColor: '#d9534f'\n      },\n      body: {\n        type: 'box',\n        layout: 'vertical',\n        spacing: 'sm',\n        contents: [\n          { type: 'text', text: `工作流程：${wfName}`, wrap: true, size: 'sm' },\n          { type: 'text', text: `失敗節點：${nodeName}`, wrap: true, size: 'sm', color: '#d9534f' },\n          { type: 'text', text: `錯誤：${errMsg.substring(0, 120)}`, wrap: true, size: 'xs', color: '#666666' }\n        ]\n      },\n      footer: {\n        type: 'box',\n        layout: 'vertical',\n        contents: [{\n          type: 'button',\n          style: 'primary',\n          color: '#1e90ff',\n          action: {\n            type: 'uri',\n            label: '前往 n8n 重試',\n            uri: execUrl\n          }\n        }]\n      }\n    }\n  }]\n};\n\nreturn [{ json: { payload: JSON.stringify(flex) } }];"
+      },
+      "id": "err-build-msg",
+      "name": "Build Error Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.parse($json.payload) }}",
+        "options": {}
+      },
+      "id": "err-line-push",
+      "name": "LINE → Jerry (Error)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 340],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Header Auth account 2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [[{ "node": "Build Error Message", "type": "main", "index": 0 }]]
+    },
+    "Build Error Message": {
+      "main": [[{ "node": "LINE → Jerry (Error)", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
