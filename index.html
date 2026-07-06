@@ -112,8 +112,6 @@
       border: none; border-radius: 50%; width: 22px; height: 22px;
       font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
-    /* Progress text */
-    .upload-progress { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; min-height: 18px; }
     /* Submit */
     .submit-btn {
       width: 100%; padding: 15px;
@@ -142,6 +140,42 @@
       background: var(--green); color: #fff;
       border: none; border-radius: 10px;
       font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    /* Progress bar */
+    .progress-bar-wrap { max-width: 380px; margin: 20px auto 0; }
+    .progress-bar-track {
+      width: 100%; height: 10px; background: #e6f4e6;
+      border-radius: 6px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; width: 0%; background: var(--green);
+      border-radius: 6px; transition: width 0.3s ease;
+    }
+    .progress-bar-fill.error { background: var(--red); }
+    .progress-bar-pct {
+      text-align: center; font-size: 13px; color: var(--muted);
+      margin-top: 6px; font-weight: 600;
+    }
+    /* Progress steps */
+    .progress-steps { max-width: 380px; margin: 20px auto 0; text-align: left; }
+    .step {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 4px; border-bottom: 1px solid var(--border);
+      opacity: 0.4; transition: opacity 0.2s;
+    }
+    .step:last-child { border-bottom: none; }
+    .step.active, .step.done, .step.error { opacity: 1; }
+    .step-icon { font-size: 22px; width: 26px; text-align: center; flex-shrink: 0; }
+    .step-text { flex: 1; min-width: 0; }
+    .step-label { font-size: 14px; font-weight: 600; color: var(--text); }
+    .step.active .step-label { color: var(--green); }
+    .step.error .step-label { color: var(--red); }
+    .step-sub { font-size: 12px; color: var(--muted); margin-top: 2px; min-height: 15px; }
+    .step-status { width: 22px; text-align: center; flex-shrink: 0; font-size: 15px; }
+    .mini-spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid #dde5dd; border-top-color: var(--green);
+      animation: spin 0.7s linear infinite; display: inline-block;
     }
   </style>
 </head>
@@ -312,7 +346,6 @@
             <div class="photo-zone-label" id="l-photoLabel">Tap to upload photos (max 10) / แตะเพื่ออัปโหลดรูป (สูงสุด 10 รูป)</div>
           </div>
           <div class="photo-grid" id="photoGrid"></div>
-          <div class="upload-progress" id="uploadProgress"></div>
         </div>
       </div>
 
@@ -323,6 +356,44 @@
       </button>
 
     </form>
+
+    <!-- Progress -->
+    <div class="screen" id="progressScreen">
+      <div class="screen-icon">📤</div>
+      <div class="screen-title" id="progressTitle">Submitting Report...</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressBarFill"></div>
+        </div>
+        <div class="progress-bar-pct" id="progressBarPct">0%</div>
+      </div>
+      <div class="progress-steps">
+        <div class="step pending" id="step-photos">
+          <div class="step-icon">📷</div>
+          <div class="step-text">
+            <div class="step-label" id="step-photos-label">Uploading Photos</div>
+            <div class="step-sub" id="step-photos-sub"></div>
+          </div>
+          <div class="step-status" id="step-photos-status"></div>
+        </div>
+        <div class="step pending" id="step-submit">
+          <div class="step-icon">📨</div>
+          <div class="step-text">
+            <div class="step-label" id="step-submit-label">Sending Report</div>
+            <div class="step-sub" id="step-submit-sub"></div>
+          </div>
+          <div class="step-status" id="step-submit-status"></div>
+        </div>
+        <div class="step pending" id="step-process">
+          <div class="step-icon">⚙️</div>
+          <div class="step-text">
+            <div class="step-label" id="step-process-label">Processing Report</div>
+            <div class="step-sub" id="step-process-sub"></div>
+          </div>
+          <div class="step-status" id="step-process-status"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- Success -->
     <div class="screen" id="successScreen">
@@ -440,6 +511,17 @@ const T = {
     uploading: (n, t) => `Uploading photo ${n}/${t}...`,
     submitting: 'Submitting...',
     langBtn: 'TH',
+    progressTitle: 'Submitting Report...',
+    'step-photos-label': 'Uploading Photos',
+    'step-submit-label': 'Sending Report',
+    'step-process-label': 'Processing Report',
+    noPhotos: 'No photos',
+    processMsgs: [
+      'Generating PDF report...',
+      'Uploading to cloud storage...',
+      'Translating report to Chinese...',
+      'Sending LINE notification...'
+    ],
   },
   th: {
     hdrTitle: 'บันทึกงานประจำวัน',
@@ -487,6 +569,17 @@ const T = {
     uploading: (n, t) => `กำลังอัปโหลดรูป ${n}/${t}...`,
     submitting: 'กำลังส่ง...',
     langBtn: '中文',
+    progressTitle: 'กำลังส่งรายงาน...',
+    'step-photos-label': 'กำลังอัปโหลดรูปภาพ',
+    'step-submit-label': 'กำลังส่งรายงาน',
+    'step-process-label': 'กำลังประมวลผลรายงาน',
+    noPhotos: 'ไม่มีรูปภาพ',
+    processMsgs: [
+      'กำลังสร้างรายงาน PDF...',
+      'กำลังอัปโหลดไปยังคลาวด์...',
+      'กำลังแปลรายงานเป็นภาษาจีน...',
+      'กำลังส่งการแจ้งเตือนทาง LINE...'
+    ],
   },
   zh: {
     hdrTitle: '監工人員工作日誌',
@@ -534,6 +627,17 @@ const T = {
     uploading: (n, t) => `正在上傳照片 ${n}/${t}...`,
     submitting: '送出中...',
     langBtn: 'EN',
+    progressTitle: '正在送出報告...',
+    'step-photos-label': '上傳照片中',
+    'step-submit-label': '送出報告中',
+    'step-process-label': '系統處理中',
+    noPhotos: '無照片',
+    processMsgs: [
+      '產生PDF報告中...',
+      '上傳雲端硬碟中...',
+      '翻譯中文版報告中...',
+      '推送LINE通知中...'
+    ],
   }
 };
 
@@ -541,6 +645,7 @@ let lang = localStorage.getItem('wl_lang') || 'en';
 let photoFiles = [];
 let lineUserId = null;
 let lineDisplayName = null;
+let currentPct = 0;
 
 // ── Init ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -584,7 +689,8 @@ function applyLang() {
     'l-materialsUsed','l-equipment','l-communication','l-otherNotes',
     'l-samplingTests','l-qualityInspection','l-photoLabel',
     'opt-sel','w-sunny-1','w-rainy-1','w-sunny-2','w-rainy-2',
-    'submitLabel','successTitle','successMsg','errorTitle','errorMsg','retryBtn','langBtn'
+    'submitLabel','successTitle','successMsg','errorTitle','errorMsg','retryBtn','langBtn',
+    'progressTitle','step-photos-label','step-submit-label','step-process-label'
   ];
   ids.forEach(id => {
     const el = document.getElementById(id);
@@ -692,6 +798,50 @@ function validate(data) {
   return ok;
 }
 
+// ── Progress steps ──────────────────────────────────────────
+function setStep(name, state, subText) {
+  const el = document.getElementById('step-' + name);
+  if (!el) return;
+  el.classList.remove('pending', 'active', 'done', 'error');
+  el.classList.add(state);
+  const statusEl = document.getElementById('step-' + name + '-status');
+  if (statusEl) {
+    statusEl.innerHTML = state === 'active' ? '<div class="mini-spinner"></div>'
+      : state === 'done' ? '✅'
+      : state === 'error' ? '❌' : '';
+  }
+  if (subText !== undefined) setStepSub(name, subText);
+}
+
+function setStepSub(name, text) {
+  const el = document.getElementById('step-' + name + '-sub');
+  if (el) el.textContent = text;
+}
+
+function resetProgressSteps() {
+  ['photos', 'submit', 'process'].forEach(n => setStep(n, 'pending', ''));
+}
+
+// ── Progress bar ─────────────────────────────────────────────
+function setProgress(pct) {
+  currentPct = Math.max(0, Math.min(100, pct));
+  const fill = document.getElementById('progressBarFill');
+  const label = document.getElementById('progressBarPct');
+  if (fill) fill.style.width = currentPct + '%';
+  if (label) label.textContent = Math.round(currentPct) + '%';
+}
+
+function resetProgress() {
+  const fill = document.getElementById('progressBarFill');
+  if (fill) fill.classList.remove('error');
+  setProgress(0);
+}
+
+function setProgressError() {
+  const fill = document.getElementById('progressBarFill');
+  if (fill) fill.classList.add('error');
+}
+
 // ── Submit ────────────────────────────────────────────────
 document.getElementById('theForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -701,25 +851,35 @@ document.getElementById('theForm').addEventListener('submit', async e => {
   const btn = document.getElementById('submitBtn');
   const lbl = document.getElementById('submitLabel');
   const spn = document.getElementById('spinner');
-  const prog = document.getElementById('uploadProgress');
   const t = T[lang];
 
   btn.disabled = true;
   spn.style.display = 'block';
+  lbl.textContent = t.submitting;
 
+  showScreen('progressScreen');
+  resetProgressSteps();
+  resetProgress();
+
+  let processInterval = null;
   try {
-    // Upload photos
+    // Step 1: upload photos — real, file-count-based progress
+    const hasPhotos = photoFiles.length > 0;
+    const photoSpan = hasPhotos ? 45 : 0; // % of the bar reserved for photo uploads
     const photoUrls = [];
-    for (let i = 0; i < photoFiles.length; i++) {
-      prog.textContent = t.uploading(i + 1, photoFiles.length);
-      const b64 = await compressPhoto(photoFiles[i]);
-      const url = await uploadPhoto(b64);
-      photoUrls.push(url);
+    if (hasPhotos) {
+      for (let i = 0; i < photoFiles.length; i++) {
+        setStep('photos', 'active', `${i + 1}/${photoFiles.length}`);
+        const b64 = await compressPhoto(photoFiles[i]);
+        const url = await uploadPhoto(b64);
+        photoUrls.push(url);
+        setProgress(((i + 1) / photoFiles.length) * photoSpan);
+      }
     }
-    prog.textContent = '';
+    setStep('photos', 'done', hasPhotos ? `${photoFiles.length}/${photoFiles.length}` : t.noPhotos);
 
-    lbl.textContent = t.submitting;
-
+    // Step 2: dispatch to server
+    setStep('submit', 'active');
     const payload = {
       ...raw,
       lineUserId,
@@ -729,18 +889,41 @@ document.getElementById('theForm').addEventListener('submit', async e => {
       photoUrls,
       photoCount: photoUrls.length,
     };
-
-    const res = await fetch(CFG.N8N_WEBHOOK_URL, {
+    const fetchPromise = fetch(CFG.N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    setStep('submit', 'done');
+    setProgress(photoSpan + 5);
 
-    showScreen('successScreen');
+    // Step 3: server-side processing (PDF, translation, upload, LINE push).
+    // The webhook only replies once everything is done, so there's no real
+    // % to read from the network — ease the bar toward (not reaching) a cap
+    // every tick so it's always visibly moving instead of looking frozen.
+    const msgs = t.processMsgs;
+    const PROCESS_CAP = 95;
+    let mi = 0;
+    setStep('process', 'active', msgs[0]);
+    processInterval = setInterval(() => {
+      mi = (mi + 1) % msgs.length;
+      setStepSub('process', msgs[mi]);
+      setProgress(currentPct + (PROCESS_CAP - currentPct) * 0.12);
+    }, 500);
+
+    const res = await fetchPromise;
+    clearInterval(processInterval);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    setStep('process', 'done');
+    setProgress(100);
+
+    setTimeout(() => showScreen('successScreen'), 400);
   } catch (err) {
     console.error('Submit error:', err);
-    showScreen('errorScreen');
+    if (processInterval) clearInterval(processInterval);
+    setStep('process', 'error');
+    setProgressError();
+    setTimeout(() => showScreen('errorScreen'), 600);
     btn.disabled = false;
     spn.style.display = 'none';
     lbl.textContent = t.submitLabel;
@@ -748,14 +931,15 @@ document.getElementById('theForm').addEventListener('submit', async e => {
 });
 
 function showScreen(id) {
-  document.getElementById('theForm').style.display = 'none';
+  ['theForm', 'progressScreen', 'successScreen', 'errorScreen'].forEach(sid => {
+    document.getElementById(sid).style.display = 'none';
+  });
   document.getElementById(id).style.display = 'block';
   window.scrollTo(0, 0);
 }
 
 function retryForm() {
-  document.getElementById('theForm').style.display = 'block';
-  document.getElementById('errorScreen').style.display = 'none';
+  showScreen('theForm');
 }
 </script>
 </body>
