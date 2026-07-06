@@ -441,6 +441,8 @@ function fillSelect(id, items) {
   });
 }
 
+let supervisorEmailMap = {};
+
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const res = await fetch(CFG.OPTIONS_URL);
@@ -449,9 +451,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const supervisors = [], projects = [], contractors = [];
     csv.split('\n').slice(1).forEach(row => {
       const cols = row.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-      const [name, type, enabled] = cols;
+      const [name, type, enabled, email] = cols;
       if (!name || enabled !== 'TRUE') return;
-      if (type === '監工人員') supervisors.push(name);
+      if (type === '監工人員') { supervisors.push(name); if (email) supervisorEmailMap[name] = email; }
       else if (type === '工程名稱') projects.push(name);
       else if (type === '施工廠商') contractors.push(name);
     });
@@ -884,6 +886,7 @@ document.getElementById('theForm').addEventListener('submit', async e => {
       ...raw,
       lineUserId,
       lineDisplayName,
+      supervisorEmail: supervisorEmailMap[raw.supervisor] || '',
       language: lang,
       submittedAt: new Date().toISOString(),
       photoUrls,

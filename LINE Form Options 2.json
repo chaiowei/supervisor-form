@@ -294,7 +294,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst driveFileId = $('Google Drive Upload').first().json.id;\nconst driveUrl = 'https://drive.google.com/file/d/' + driveFileId + '/view';\nconst driveFileIdZH = $('Google Drive Upload (ZH)').first().json.id;\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveFileIdZH + '/view';\nconst lang = d.language || 'en';\nconst W = { en: { sunny: '☀️ Sunny', rainy: '🌧️ Rainy' }, th: { sunny: '☀️ แดดออก', rainy: '🌧️ ฝนตก' }, zh: { sunny: '☀️ 晴天', rainy: '🌧️ 下雨' } };\nconst wC = W[lang] || W.en;\nconst mW = wC[d.morningWeather] || d.morningWeather || '-';\nconst aW = wC[d.afternoonWeather] || d.afternoonWeather || '-';\nconst mWZH = W.zh[d.morningWeather] || d.morningWeather || '-';\nconst aWZH = W.zh[d.afternoonWeather] || d.afternoonWeather || '-';\nconst CL = {\n  en: { title: '✅ Work Report Submitted', morning: 'AM', afternoon: 'PM', date: 'Date', project: 'Project', area: 'Area', weather: 'Weather', workers: 'Workers', location: '📍 Location', workDone: '🔨 Work Done', tomorrow: '📋 Tomorrow Plan', materials: '🧱 Materials', equipment: '⚙️ Equipment', comms: '💬 Communication', notes: '📝 Notes', sampling: '🧪 Sampling', quality: '✔️ Quality Check', download: '📥 Download PDF' },\n  th: { title: '✅ ส่งรายงานสำเร็จ', morning: 'เช้า', afternoon: 'บ่าย', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', weather: 'อากาศ', workers: 'คนงาน', location: '📍 ตำแหน่ง', workDone: '🔨 งานวันนี้', tomorrow: '📋 แผนพรุ่งนี้', materials: '🧱 วัสดุ', equipment: '⚙️ เครื่องมือ', comms: '💬 ประสานงาน', notes: '📝 หมายเหตุ', sampling: '🧪 ตัวอย่าง', quality: '✔️ ตรวจสอบ', download: '📥 ดาวน์โหลด PDF' },\n  zh: { title: '✅ 監工日誌已送出', morning: '上午', afternoon: '下午', date: '日期', project: '工程', area: '廠區', weather: '天氣', workers: '出工人數', location: '📍 施工部位', workDone: '🔨 今日施工', tomorrow: '📋 明日計畫', materials: '🧱 材料', equipment: '⚙️ 機具', comms: '💬 溝通記錄', notes: '📝 其他備注', sampling: '🧪 取樣記錄', quality: '✔️ 品質檢查', download: '📥 下載 PDF' }\n};\nconst cl = CL[lang] || CL.en;\nconst clZH = CL.zh;\nconst trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';\nfunction kv(label, value) {\n  return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };\n}\nfunction lbl(text) {\n  return { type: 'text', text: text, size: 'xs', color: '#1a73e8', weight: 'bold', margin: 'md' };\n}\nfunction txt(text) {\n  return { type: 'text', text: text, size: 'sm', color: '#333333', wrap: true, margin: 'xs' };\n}\nfunction sep() { return { type: 'separator', margin: 'sm', color: '#eeeeee' }; }\nfunction buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor) {\n  const body = [\n    kv(cl.date, data.date + ' (' + data.weekday + ')'),\n    kv(cl.project, trunc(data.projectName, 50)),\n    kv(cl.area, trunc(data.constructionArea, 50)),\n    kv(cl.weather, cl.morning + ': ' + mWeather + '  ' + cl.afternoon + ': ' + aWeather),\n    kv(cl.workers, String(data.workers || '-')),\n    sep(),\n    lbl(cl.location), txt(trunc(data.constructionLocation, 150)),\n    sep(),\n    lbl(cl.workDone), txt(trunc(data.constructionItems, 200))\n  ];\n  if (data.tomorrowPlan) { body.push(sep()); body.push(lbl(cl.tomorrow)); body.push(txt(trunc(data.tomorrowPlan, 150))); }\n  if (data.materialsUsed || data.equipment) {\n    body.push(sep());\n    if (data.materialsUsed) body.push(kv(cl.materials, trunc(data.materialsUsed, 100)));\n    if (data.equipment) body.push(kv(cl.equipment, trunc(data.equipment, 100)));\n  }\n  if (data.communication) { body.push(sep()); body.push(lbl(cl.comms)); body.push(txt(trunc(data.communication, 150))); }\n  if (data.samplingTests) { body.push(sep()); body.push(lbl(cl.sampling)); body.push(txt(trunc(data.samplingTests, 150))); }\n  if (data.qualityInspection) { body.push(sep()); body.push(lbl(cl.quality)); body.push(txt(trunc(data.qualityInspection, 150))); }\n  if (data.otherNotes) { body.push(sep()); body.push(lbl(cl.notes)); body.push(txt(trunc(data.otherNotes, 150))); }\n  return {\n    type: 'bubble',\n    header: { type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '14px', contents: [{ type: 'text', text: cl.title, color: '#ffffff', weight: 'bold', size: 'md', wrap: true }, { type: 'text', text: String(data.contractor || ''), color: '#ffffffcc', size: 'xs', margin: 'xs' }] },\n    body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: body },\n    footer: { type: 'box', layout: 'vertical', paddingAll: '10px', contents: [{ type: 'button', style: 'primary', color: headerColor, height: 'sm', action: { type: 'uri', label: cl.download, uri: pdfUrl } }] }\n  };\n}\nconst contractorBubble = buildFlex(cl, d, mW, aW, driveUrl, '#1a73e8');\nconst jerryBubble = buildFlex(clZH, dZH, mWZH, aWZH, driveUrlZH, '#0d7a0d');\nconst contractorFlex = { to: d.lineUserId, messages: [{ type: 'flex', altText: cl.title, contents: contractorBubble }] };\nconst jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: clZH.title, contents: jerryBubble }] };\nreturn [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex) } }];"
+        "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst driveFileId = $('Google Drive Upload').first().json.id;\nconst driveUrl = 'https://drive.google.com/file/d/' + driveFileId + '/view';\nconst driveFileIdZH = $('Google Drive Upload (ZH)').first().json.id;\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveFileIdZH + '/view';\nconst lang = d.language || 'en';\nconst W = { en: { sunny: '☀️ Sunny', rainy: '🌧️ Rainy' }, th: { sunny: '☀️ แดดออก', rainy: '🌧️ ฝนตก' }, zh: { sunny: '☀️ 晴天', rainy: '🌧️ 下雨' } };\nconst wC = W[lang] || W.en;\nconst mW = wC[d.morningWeather] || d.morningWeather || '-';\nconst aW = wC[d.afternoonWeather] || d.afternoonWeather || '-';\nconst mWZH = W.zh[d.morningWeather] || d.morningWeather || '-';\nconst aWZH = W.zh[d.afternoonWeather] || d.afternoonWeather || '-';\nconst CL = {\n  en: { title: '✅ Work Report Submitted', morning: 'AM', afternoon: 'PM', date: 'Date', project: 'Project', area: 'Area', weather: 'Weather', workers: 'Workers', location: '📍 Location', workDone: '🔨 Work Done', tomorrow: '📋 Tomorrow Plan', materials: '🧱 Materials', equipment: '⚙️ Equipment', comms: '💬 Communication', notes: '📝 Notes', sampling: '🧪 Sampling', quality: '✔️ Quality Check', download: '📥 Download PDF' },\n  th: { title: '✅ ส่งรายงานสำเร็จ', morning: 'เช้า', afternoon: 'บ่าย', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', weather: 'อากาศ', workers: 'คนงาน', location: '📍 ตำแหน่ง', workDone: '🔨 งานวันนี้', tomorrow: '📋 แผนพรุ่งนี้', materials: '🧱 วัสดุ', equipment: '⚙️ เครื่องมือ', comms: '💬 ประสานงาน', notes: '📝 หมายเหตุ', sampling: '🧪 ตัวอย่าง', quality: '✔️ ตรวจสอบ', download: '📥 ดาวน์โหลด PDF' },\n  zh: { title: '✅ 監工日誌已送出', morning: '上午', afternoon: '下午', date: '日期', project: '工程', area: '廠區', weather: '天氣', workers: '出工人數', location: '📍 施工部位', workDone: '🔨 今日施工', tomorrow: '📋 明日計畫', materials: '🧱 材料', equipment: '⚙️ 機具', comms: '💬 溝通記錄', notes: '📝 其他備注', sampling: '🧪 取樣記錄', quality: '✔️ 品質檢查', download: '📥 下載 PDF' }\n};\nconst cl = CL[lang] || CL.en;\nconst clZH = CL.zh;\nconst trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';\nfunction kv(label, value) {\n  return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };\n}\nfunction lbl(text) {\n  return { type: 'text', text: text, size: 'xs', color: '#1a73e8', weight: 'bold', margin: 'md' };\n}\nfunction txt(text) {\n  return { type: 'text', text: text, size: 'sm', color: '#333333', wrap: true, margin: 'xs' };\n}\nfunction sep() { return { type: 'separator', margin: 'sm', color: '#eeeeee' }; }\nfunction buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor) {\n  const body = [\n    kv(cl.date, data.date + ' (' + data.weekday + ')'),\n    kv(cl.project, trunc(data.projectName, 50)),\n    kv(cl.area, trunc(data.constructionArea, 50)),\n    kv(cl.weather, cl.morning + ': ' + mWeather + '  ' + cl.afternoon + ': ' + aWeather),\n    kv(cl.workers, String(data.workers || '-')),\n    sep(),\n    lbl(cl.location), txt(trunc(data.constructionLocation, 150)),\n    sep(),\n    lbl(cl.workDone), txt(trunc(data.constructionItems, 200))\n  ];\n  if (data.tomorrowPlan) { body.push(sep()); body.push(lbl(cl.tomorrow)); body.push(txt(trunc(data.tomorrowPlan, 150))); }\n  if (data.materialsUsed || data.equipment) {\n    body.push(sep());\n    if (data.materialsUsed) body.push(kv(cl.materials, trunc(data.materialsUsed, 100)));\n    if (data.equipment) body.push(kv(cl.equipment, trunc(data.equipment, 100)));\n  }\n  if (data.communication) { body.push(sep()); body.push(lbl(cl.comms)); body.push(txt(trunc(data.communication, 150))); }\n  if (data.samplingTests) { body.push(sep()); body.push(lbl(cl.sampling)); body.push(txt(trunc(data.samplingTests, 150))); }\n  if (data.qualityInspection) { body.push(sep()); body.push(lbl(cl.quality)); body.push(txt(trunc(data.qualityInspection, 150))); }\n  if (data.otherNotes) { body.push(sep()); body.push(lbl(cl.notes)); body.push(txt(trunc(data.otherNotes, 150))); }\n  return {\n    type: 'bubble',\n    header: { type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '14px', contents: [{ type: 'text', text: cl.title, color: '#ffffff', weight: 'bold', size: 'md', wrap: true }, { type: 'text', text: String(data.contractor || ''), color: '#ffffffcc', size: 'xs', margin: 'xs' }] },\n    body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: body },\n    footer: { type: 'box', layout: 'vertical', paddingAll: '10px', contents: [{ type: 'button', style: 'primary', color: headerColor, height: 'sm', action: { type: 'uri', label: cl.download, uri: pdfUrl } }] }\n  };\n}\nconst contractorBubble = buildFlex(cl, d, mW, aW, driveUrl, '#1a73e8');\nconst jerryBubble = buildFlex(clZH, dZH, mWZH, aWZH, driveUrlZH, '#0d7a0d');\nconst contractorFlex = { to: d.lineUserId, messages: [{ type: 'flex', altText: cl.title, contents: contractorBubble }] };\nconst jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: clZH.title, contents: jerryBubble }] };\nfunction escHtml(s) { return String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\nconst JERRY_EMAIL = 'jerry_hsieh@eco-infinic.com';\nconst recipientEmail = (d.supervisorEmail || '').trim() || JERRY_EMAIL;\nconst isJerry = recipientEmail.toLowerCase() === JERRY_EMAIL.toLowerCase();\nconst emailSubject = `監工日誌通知 - ${d.projectName || ''} - ${d.date || ''}`;\nconst emailHtml = `<p>監工人員 <b>${escHtml(d.supervisor)}</b> 提交了新的監工日誌。</p><p>工程：${escHtml(d.projectName)}<br>廠區：${escHtml(d.constructionArea)}<br>日期：${escHtml(d.date)}（${escHtml(dZH.weekday)}）<br>廠商：${escHtml(d.contractor)}</p><p><a href=\"${driveUrlZH}\">📥 下載中文版 PDF 報告</a></p>`;\nreturn [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex), isJerry, recipientEmail, emailSubject, emailHtml } }];"
       },
       "id": "n8-messages",
       "name": "Build Messages",
@@ -359,6 +359,52 @@
           "name": "Header Auth account 2"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-jerry-cond",
+              "leftValue": "={{ $json.isJerry }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "n11-is-jerry",
+      "name": "Is Jerry?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3100, 640]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.recipientEmail }}",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "html",
+        "message": "={{ $json.emailHtml }}",
+        "options": {}
+      },
+      "id": "n12-gmail",
+      "name": "Email → Recipient",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [3100, 840],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
     }
   ],
   "connections": {
@@ -401,8 +447,15 @@
     "Build Messages": {
       "main": [[
         { "node": "LINE → Contractor", "type": "main", "index": 0 },
-        { "node": "LINE → Jerry", "type": "main", "index": 0 }
+        { "node": "Is Jerry?", "type": "main", "index": 0 },
+        { "node": "Email → Recipient", "type": "main", "index": 0 }
       ]]
+    },
+    "Is Jerry?": {
+      "main": [
+        [{ "node": "LINE → Jerry", "type": "main", "index": 0 }],
+        []
+      ]
     }
   },
   "active": false,
