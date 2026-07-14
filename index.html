@@ -91,8 +91,41 @@
     .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     /* Error state */
     .err-msg { display: none; color: var(--red); font-size: 11px; margin-top: 4px; }
-    .field.err input, .field.err select, .field.err textarea { border-color: var(--red); }
+    .field.err input, .field.err select, .field.err textarea, .field.err .multiselect-btn { border-color: var(--red); }
     .field.err .err-msg { display: block; }
+    /* Multi-select popup */
+    .multiselect-btn {
+      width: 100%; text-align: left; padding: 13px 14px;
+      border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: 16px; font-family: inherit; color: var(--text);
+      background: #fafdf9; cursor: pointer;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .multiselect-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .ms-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 300; display: flex; align-items: flex-end; justify-content: center;
+    }
+    .ms-sheet {
+      background: #fff; width: 100%; max-width: 540px;
+      border-radius: 16px 16px 0 0; padding: 18px 16px 16px;
+      max-height: 72vh; display: flex; flex-direction: column;
+    }
+    .ms-sheet-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+    .ms-list { overflow-y: auto; flex: 1; margin-bottom: 14px; }
+    .ms-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 4px; border-bottom: 1px solid var(--border); font-size: 15px;
+    }
+    .ms-item input { width: 18px; height: 18px; flex-shrink: 0; }
+    .ms-empty { color: var(--muted); font-size: 13px; padding: 12px 4px; }
+    .ms-actions { display: flex; gap: 8px; }
+    .ms-actions button {
+      flex: 1; padding: 12px; border-radius: 10px; border: none;
+      font-weight: 700; font-size: 15px; cursor: pointer;
+    }
+    .ms-actions .btn-primary { background: var(--green); color: #fff; }
+    .ms-actions .btn-secondary { background: #eee; color: #333; }
     /* Photo upload */
     .photo-zone {
       border: 2px dashed var(--border); border-radius: 10px;
@@ -234,11 +267,20 @@
           <div class="err-msg" id="e-supervisor">Required / จำเป็น</div>
         </div>
 
+        <div class="field" id="f-contractor">
+          <label><span id="l-contractor">Contractor Company</span><span class="req">*</span></label>
+          <select name="contractor" id="sel-contractor" disabled>
+            <option value="" id="opt-sel-contractor">-- Select --</option>
+          </select>
+          <div class="err-msg" id="e-contractor">Required / จำเป็น</div>
+        </div>
+
         <div class="field" id="f-projectName">
           <label><span id="l-projectName">Project Name</span><span class="req">*</span></label>
-          <select name="projectName" id="sel-projectName">
-            <option value="">-- Select --</option>
-          </select>
+          <button type="button" class="multiselect-btn" id="btn-projectName" onclick="openProjectPicker()" disabled>
+            <span id="projectNameSummary">-- Select --</span>
+          </button>
+          <input type="hidden" name="projectName" id="hidden-projectName">
           <div class="err-msg" id="e-projectName">Required / จำเป็น</div>
         </div>
 
@@ -246,14 +288,6 @@
           <label><span id="l-constructionArea">Construction Area</span><span class="req">*</span></label>
           <input type="text" name="constructionArea" id="i-constructionArea" placeholder="e.g. Building A, Zone 3">
           <div class="err-msg" id="e-constructionArea">Required / จำเป็น</div>
-        </div>
-
-        <div class="field" id="f-contractor">
-          <label><span id="l-contractor">Contractor Company</span><span class="req">*</span></label>
-          <select name="contractor" id="sel-contractor">
-            <option value="">-- Select --</option>
-          </select>
-          <div class="err-msg" id="e-contractor">Required / จำเป็น</div>
         </div>
 
         <div class="field" id="f-date">
@@ -451,6 +485,18 @@
   </div>
 </div>
 
+<!-- Project multi-select popup -->
+<div class="ms-overlay" id="projectPickerOverlay" style="display:none">
+  <div class="ms-sheet">
+    <div class="ms-sheet-title" id="msTitle">Select Projects</div>
+    <div class="ms-list" id="projectCheckList"></div>
+    <div class="ms-actions">
+      <button type="button" class="btn-secondary" id="msCancelBtn" onclick="closeProjectPicker(false)">Cancel</button>
+      <button type="button" class="btn-primary" id="msConfirmBtn" onclick="closeProjectPicker(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════════
 //  CONFIGURATION — fill in before deploying
@@ -481,29 +527,117 @@ function fillSelect(id, items) {
 }
 
 let supervisorEmailMap = {};
+// Hierarchy from the options CSV: 工程師(supervisor) → 廠商(contractor) → 工程名稱(project).
+// contractorsByEngineer[supervisorName] = [contractor names under that engineer]
+// projectsByContractor[contractorName] = [project names under that contractor]
+let contractorsByEngineer = {};
+let projectsByContractor = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const res = await fetch(CFG.OPTIONS_URL);
     if (!res.ok) throw new Error('options fetch failed');
     const csv = await res.text();
-    const supervisors = [], projects = [], contractors = [];
+    const supervisors = [];
     csv.split('\n').slice(1).forEach(row => {
       const cols = row.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-      const [name, type, enabled, email] = cols;
+      const [name, type, enabled, email, parent] = cols;
       if (!name || enabled !== 'TRUE') return;
-      if (type === '監工人員') { supervisors.push(name); if (email) supervisorEmailMap[name] = email; }
-      else if (type === '工程名稱') projects.push(name);
-      else if (type === '施工廠商') contractors.push(name);
+      if (type === '監工人員') {
+        supervisors.push(name);
+        if (email) supervisorEmailMap[name] = email;
+      } else if (type === '施工廠商') {
+        const key = parent || '';
+        if (!contractorsByEngineer[key]) contractorsByEngineer[key] = [];
+        contractorsByEngineer[key].push(name);
+      } else if (type === '工程名稱') {
+        const key = parent || '';
+        if (!projectsByContractor[key]) projectsByContractor[key] = [];
+        projectsByContractor[key].push(name);
+      }
     });
     fillSelect('sel-supervisor', supervisors);
-    fillSelect('sel-projectName', projects);
-    fillSelect('sel-contractor', contractors);
   } catch (e) {
     console.warn('[form-options] fetch failed, using empty lists:', e.message);
     const w = document.getElementById('optionsWarn');
     if (w) { w.textContent = T[lang].optionsWarnMsg; w.style.display = 'block'; }
   }
+});
+
+// ── Cascading filters: supervisor → contractor → project (multi-select) ────
+let currentProjectOptions = [];
+let selectedProjects = [];
+
+function populateContractorOptions(supervisorName) {
+  const sel = document.getElementById('sel-contractor');
+  const t = T[lang];
+  sel.innerHTML = '';
+  const blank = document.createElement('option');
+  blank.value = ''; blank.id = 'opt-sel-contractor'; blank.textContent = t['opt-sel'];
+  sel.appendChild(blank);
+  const list = supervisorName ? (contractorsByEngineer[supervisorName] || []) : [];
+  list.forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  });
+  sel.disabled = !supervisorName;
+  populateProjectOptions('');
+}
+
+function populateProjectOptions(contractorName) {
+  currentProjectOptions = contractorName ? (projectsByContractor[contractorName] || []) : [];
+  selectedProjects = selectedProjects.filter(p => currentProjectOptions.includes(p));
+  document.getElementById('btn-projectName').disabled = !contractorName;
+  updateProjectSummary();
+}
+
+function updateProjectSummary() {
+  const hidden = document.getElementById('hidden-projectName');
+  const summary = document.getElementById('projectNameSummary');
+  hidden.value = selectedProjects.join(', ');
+  summary.textContent = selectedProjects.length ? selectedProjects.join(', ') : T[lang]['opt-sel'];
+}
+
+function openProjectPicker() {
+  const btn = document.getElementById('btn-projectName');
+  if (btn.disabled) return;
+  const t = T[lang];
+  const list = document.getElementById('projectCheckList');
+  list.innerHTML = '';
+  if (!currentProjectOptions.length) {
+    list.innerHTML = `<div class="ms-empty">${t.msEmpty}</div>`;
+  } else {
+    currentProjectOptions.forEach((name, i) => {
+      const row = document.createElement('label');
+      row.className = 'ms-item';
+      const checked = selectedProjects.includes(name) ? 'checked' : '';
+      const safe = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      row.innerHTML = `<input type="checkbox" id="ms-chk-${i}" value="${safe}" ${checked}><span>${safe}</span>`;
+      list.appendChild(row);
+    });
+  }
+  document.getElementById('projectPickerOverlay').style.display = 'flex';
+}
+
+function closeProjectPicker(apply) {
+  if (apply) {
+    const checks = document.querySelectorAll('#projectCheckList input[type="checkbox"]');
+    selectedProjects = Array.from(checks).filter(c => c.checked).map(c => c.value);
+    updateProjectSummary();
+    if (selectedProjects.length) {
+      const f = document.getElementById('f-projectName');
+      if (f) f.classList.remove('err');
+    }
+  }
+  document.getElementById('projectPickerOverlay').style.display = 'none';
+}
+
+document.getElementById('sel-supervisor').addEventListener('change', e => {
+  populateContractorOptions(e.target.value);
+});
+document.getElementById('sel-contractor').addEventListener('change', e => {
+  populateProjectOptions(e.target.value);
 });
 
 // i18n strings
@@ -573,6 +707,10 @@ const T = {
     draftDiscardBtn: 'Discard',
     optionsWarnMsg: '⚠️ Failed to load dropdown options (supervisor / project / contractor). Please check your connection or contact your supervisor.',
     photoFailWarn: (n) => `⚠️ ${n} photo(s) failed to upload after retries. The rest of the report was submitted successfully without them.`,
+    msTitle: 'Select Project(s)',
+    msCancelBtn: 'Cancel',
+    msConfirmBtn: 'Confirm',
+    msEmpty: 'Please select a Contractor Company first',
   },
   th: {
     hdrTitle: 'บันทึกงานประจำวัน',
@@ -639,6 +777,10 @@ const T = {
     draftDiscardBtn: 'ล้างข้อมูล',
     optionsWarnMsg: '⚠️ โหลดตัวเลือก (ผู้ควบคุมงาน/โครงการ/ผู้รับเหมา) ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือติดต่อผู้ควบคุมงาน',
     photoFailWarn: (n) => `⚠️ อัปโหลดรูปไม่สำเร็จ ${n} รูป (หลังจากลองใหม่แล้ว) รายงานส่วนที่เหลือถูกส่งเรียบร้อยแล้วโดยไม่มีรูปเหล่านี้`,
+    msTitle: 'เลือกโครงการ',
+    msCancelBtn: 'ยกเลิก',
+    msConfirmBtn: 'ยืนยัน',
+    msEmpty: 'กรุณาเลือกบริษัทผู้รับเหมาก่อน',
   },
   zh: {
     hdrTitle: '負責工程師工作日誌',
@@ -705,6 +847,10 @@ const T = {
     draftDiscardBtn: '清除草稿',
     optionsWarnMsg: '⚠️ 選項載入失敗（負責工程師/工程名稱/施工廠商），請確認網路連線或聯絡管理員',
     photoFailWarn: (n) => `⚠️ 有 ${n} 張照片重試後仍上傳失敗，其餘報告內容已成功送出（不含這些照片）。`,
+    msTitle: '選擇工程名稱',
+    msCancelBtn: '取消',
+    msConfirmBtn: '確認',
+    msEmpty: '請先選擇施工廠商',
   }
 };
 
@@ -769,12 +915,16 @@ function applyLang() {
     'opt-sel','w-sunny-1','w-rainy-1','w-sunny-2','w-rainy-2',
     'submitLabel','successTitle','successMsg','errorTitle','errorMsg','retryBtn','langBtn',
     'progressTitle','step-photos-label','step-submit-label','step-process-label',
-    'confirmTitleLbl','confirmSendBtn','confirmBackBtn'
+    'confirmTitleLbl','confirmSendBtn','confirmBackBtn',
+    'msTitle','msCancelBtn','msConfirmBtn'
   ];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (el && t[id] !== undefined) el.textContent = t[id];
   });
+  const contractorBlank = document.getElementById('opt-sel-contractor');
+  if (contractorBlank) contractorBlank.textContent = t['opt-sel'];
+  if (typeof updateProjectSummary === 'function') updateProjectSummary();
   // Placeholders
   ['i-constructionArea','i-workers','i-date'].forEach(id => {
     const el = document.getElementById(id);
@@ -948,10 +1098,20 @@ function clearDraft() {
 function applyDraftToForm(draft) {
   const form = document.getElementById('theForm');
   Object.keys(draft).forEach(k => {
-    if (k === '__savedAt') return;
+    if (k === '__savedAt' || k === 'projectName') return;
     const el = form.elements.namedItem(k);
     if (el) el.value = draft[k];
   });
+  // supervisor/contractor selects don't fire 'change' from a direct .value
+  // assignment, so the cascading contractor/project lists need a manual rebuild.
+  populateContractorOptions(document.getElementById('sel-supervisor').value);
+  if (draft.contractor) document.getElementById('sel-contractor').value = draft.contractor;
+  populateProjectOptions(document.getElementById('sel-contractor').value);
+  if (draft.projectName) {
+    const restored = String(draft.projectName).split(', ').filter(Boolean);
+    selectedProjects = restored.filter(p => currentProjectOptions.includes(p));
+  }
+  updateProjectSummary();
 }
 
 function checkDraft() {
