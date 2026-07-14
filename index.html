@@ -261,8 +261,8 @@
 
         <div class="field" id="f-supervisor">
           <label><span id="l-supervisor">Supervisor</span><span class="req">*</span></label>
-          <select name="supervisor" id="sel-supervisor">
-            <option value="" id="opt-sel">-- Select --</option>
+          <select name="supervisor" id="sel-supervisor" disabled>
+            <option value="" id="opt-sel-supervisor-loading">Loading... / กำลังโหลด... / 載入中...</option>
           </select>
           <div class="err-msg" id="e-supervisor">Required / จำเป็น</div>
         </div>
@@ -556,9 +556,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         projectsByContractor[key].push(name);
       }
     });
+    // Replace the "Loading options..." placeholder now that the hierarchy is
+    // ready — the select stays disabled up to this point so a fast tap can't
+    // pick a supervisor before contractorsByEngineer/projectsByContractor are
+    // populated (that race left the contractor/project lists empty).
+    const supSel = document.getElementById('sel-supervisor');
+    supSel.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = ''; blank.id = 'opt-sel'; blank.textContent = T[lang]['opt-sel'];
+    supSel.appendChild(blank);
     fillSelect('sel-supervisor', supervisors);
+    supSel.disabled = false;
   } catch (e) {
     console.warn('[form-options] fetch failed, using empty lists:', e.message);
+    const supSel = document.getElementById('sel-supervisor');
+    supSel.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = ''; blank.id = 'opt-sel'; blank.textContent = T[lang]['opt-sel'];
+    supSel.appendChild(blank);
+    supSel.disabled = false;
     const w = document.getElementById('optionsWarn');
     if (w) { w.textContent = T[lang].optionsWarnMsg; w.style.display = 'block'; }
   }
