@@ -7,13 +7,13 @@
         "path": "supervisor-report",
         "options": {}
       },
-      "id": "ae19a8b9-abb2-4862-965a-5fe93ceb40ae",
+      "id": "37359929-ab8f-462f-8acf-a6ce332691d1",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -13680,
-        128
+        -22864,
+        1968
       ],
       "webhookId": "supervisor-report"
     },
@@ -21,26 +21,26 @@
       "parameters": {
         "jsCode": "const raw = $input.first().json;\nconst d = raw.body || raw;\nconst now = new Date();\nconst submitTime = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });\nconst localeMap = { en: 'en-US', th: 'th-TH', zh: 'zh-TW' };\nconst dateObj = new Date(d.date + 'T00:00:00');\nconst weekday = dateObj.toLocaleDateString(localeMap[d.language] || 'en-US', { weekday: 'long' });\nconst weekdayZH = dateObj.toLocaleDateString('zh-TW', { weekday: 'long' });\nconst safeStr = s => (s || '').slice(0, 30);\nconst fileName = `${d.date}_${safeStr(d.contractor)}_${safeStr(d.projectName)}.pdf`;\nconst photoUrls = d.photoUrls || [];\nreturn [{ json: { ...d, submitTime, weekday, weekdayZH, fileName, photoUrls, photoCount: photoUrls.length } }];"
       },
-      "id": "e5a8f64b-ba9c-4e93-a814-fb1ef15c5248",
+      "id": "ba251907-49be-433a-b124-854538d8e69f",
       "name": "Prepare Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -13456,
-        128
+        -22640,
+        1968
       ]
     },
     {
       "parameters": {
         "jsCode": "const d = $('Prepare Data').first().json;\nconst lang = d.language || 'en';\nlet dZH = { ...d, weekday: d.weekdayZH };\nlet geminiStatus;\nif (lang === 'zh') {\n  // Source form was already filled in Chinese — never call/trust Gemini for\n  // this case (per Jerry's requirement), so a model hiccup can't corrupt\n  // already-correct Chinese text. The 'Is ZH Source?' IF node upstream\n  // skipped the Gemini HTTP call entirely for this path.\n  geminiStatus = 'success';\n} else {\n  const gemini = $input.first().json;\n  geminiStatus = 'not_called';\n  try {\n    if (gemini && !gemini.error) {\n      const rawText = gemini.candidates?.[0]?.content?.parts?.[0]?.text;\n      if (rawText) {\n        let cleanText = rawText;\n        if (cleanText.trimStart().startsWith('```')) {\n          cleanText = cleanText.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();\n        }\n        const translated = JSON.parse(cleanText.trim());\n        if (translated && typeof translated === 'object' && Object.keys(translated).length > 0) {\n          dZH = { ...d, ...translated, weekday: d.weekdayZH };\n          geminiStatus = 'success';\n        } else {\n          geminiStatus = 'empty_json';\n        }\n      } else {\n        geminiStatus = 'no_text:' + JSON.stringify(Object.keys(gemini || {}).slice(0, 5));\n      }\n    } else {\n      geminiStatus = 'gemini_error:' + String((gemini && (gemini.error || gemini.message)) || 'unknown').slice(0, 100);\n    }\n  } catch(e) {\n    geminiStatus = 'parse_err:' + String(e.message || '').slice(0, 100);\n  }\n}\nconst W = { en: { sunny: '☀️ Sunny', rainy: '🌧️ Rainy' }, th: { sunny: '☀️ แดดออก', rainy: '🌧️ ฝนตก' }, zh: { sunny: '☀️ 晴天', rainy: '🌧️ 下雨' } };\nconst wC = W[lang] || W.en;\nd.mW = wC[d.morningWeather] || d.morningWeather || '-';\nd.aW = wC[d.afternoonWeather] || d.afternoonWeather || '-';\ndZH.mW = W.zh[d.morningWeather] || d.morningWeather || '-';\ndZH.aW = W.zh[d.afternoonWeather] || d.afternoonWeather || '-';\nconst LBL = {\n  en: { title: 'Work Daily Report', projectName: 'Project Name', constructionArea: 'Construction Area', date: 'Date', weekday: 'Day', weather: 'Weather', morning: 'AM', afternoon: 'PM', time: 'Submit Time', constructionLocation: 'Construction Location', workContent: 'Work Content', constructionItems: 'Construction Items (Today)', tomorrowPlan: \"Tomorrow's Plan\", materialsUsed: 'Materials Used', equipment: 'Equipment Used', workers: 'Workers', persons: '', communication: 'Contractor Communication', otherNotes: 'Other Notes', samplingTests: 'Sampling & Testing Records', qualityInspection: 'Quality & Qty Inspection', supervisor: 'Unit Supervisor', inspector: 'Inspector', genLabel: 'Generated' },\n  th: { title: 'บันทึกงานประจำวัน', projectName: 'ชื่อโครงการ', constructionArea: 'พื้นที่ก่อสร้าง', date: 'วันที่', weekday: 'วัน', weather: 'สภาพอากาศ', morning: 'เช้า', afternoon: 'บ่าย', time: 'เวลาที่ส่ง', constructionLocation: 'ตำแหน่งก่อสร้าง', workContent: 'เนื้อหางาน', constructionItems: 'รายการงาน (วันนี้)', tomorrowPlan: 'แผนงานพรุ่งนี้', materialsUsed: 'วัสดุที่ใช้', equipment: 'เครื่องมือ', workers: 'จำนวนคน', persons: 'คน', communication: 'การสื่อสารกับผู้รับเหมา', otherNotes: 'หมายเหตุสำคัญ', samplingTests: 'การเก็บตัวอย่าง', qualityInspection: 'การตรวจสอบคุณภาพ', supervisor: 'ผู้จัดการ', inspector: 'ผู้ตรวจสอบ', genLabel: 'สร้างเมื่อ' },\n  zh: { title: '監工日誌', projectName: '工程名稱', constructionArea: '施工廠區', date: '日期', weekday: '星期', weather: '天氣', morning: '上午', afternoon: '下午', time: '時間', constructionLocation: '施工部位', workContent: '工作內容', constructionItems: '施工項目（今日）', tomorrowPlan: '明日預計工作', materialsUsed: '供給材料使用', equipment: '機具使用', workers: '出工人數', persons: '人', communication: '與廠商溝通協調記錄', otherNotes: '其他重要事項記錄', samplingTests: '施工取樣試驗記錄', qualityInspection: '品質、數量檢查記錄', supervisor: '單位主管', inspector: '負責工程師', genLabel: '報告產出時間' }\n};\nconst L = LBL[lang] || LBL.en;\nconst LZH = LBL.zh;\nconst photoUrls = d.photoUrls || [];\nconst esc = s => String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\nlet photoHtml = '';\nif (photoUrls.length > 0) {\n  for (let i = 0; i < photoUrls.length; i += 4) {\n    const chunk = photoUrls.slice(i, i + 4);\n    const cells = chunk.map(url => `<td style='width:50%;padding:4px'><img src='${url}' style='width:100%;height:auto'></td>`);\n    while (cells.length < 4) cells.push(`<td style='width:50%;padding:4px'></td>`);\n    photoHtml += `<table style='width:100%;border-collapse:collapse;margin-top:8px;page-break-inside:avoid'><tr>${cells.slice(0,2).join('')}</tr><tr>${cells.slice(2,4).join('')}</tr></table>`;\n  }\n}\nfunction buildHtml(Lb, data, genStamp) {\n  return `<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:Arial,'Noto Sans Thai',sans-serif;font-size:10pt;margin:0}.t{text-align:center;font-weight:bold;margin-bottom:4px}table.m{width:100%;border-collapse:collapse}table.m td{border:1px solid #333;padding:4px 6px;vertical-align:top}.sh{background:#ddd;font-weight:bold;text-align:center}.c{min-height:40px;white-space:pre-wrap}.gen-stamp{position:fixed;bottom:6mm;right:8mm;font-size:8pt;color:#aaaaaa}</style></head><body><div class='gen-stamp'>${Lb.genLabel}: ${genStamp}</div><div class='t' style='font-size:14pt'>ECO INFINIC</div><div class='t' style='font-size:12pt;margin-bottom:8px'>${Lb.title}</div><table class='m'><tr><td style='width:12%'><b>${Lb.projectName}</b></td><td style='width:38%'>${esc(data.projectName)}</td><td style='width:12%'><b>${Lb.constructionArea}</b></td><td style='width:38%'>${esc(data.constructionArea)}</td></tr><tr><td><b>${Lb.date}</b></td><td>${esc(data.date)}</td><td><b>${Lb.weekday}</b></td><td>${esc(data.weekday)}</td></tr><tr><td><b>${Lb.weather}</b></td><td colspan='3'>${Lb.morning}: ${esc(data.mW)} / ${Lb.afternoon}: ${esc(data.aW)}</td></tr><tr><td><b>${Lb.time}</b></td><td colspan='3'>${esc(data.submitTime)}</td></tr><tr><td class='sh' colspan='4'>${Lb.constructionLocation}</td></tr><tr><td colspan='4' class='c'>${esc(data.constructionLocation)}</td></tr><tr><td class='sh' colspan='4'>${Lb.workContent}</td></tr><tr><td><b>${Lb.constructionItems}</b></td><td colspan='3' class='c' style='min-height:60px'>${esc(data.constructionItems)}</td></tr><tr><td><b>${Lb.tomorrowPlan}</b></td><td colspan='3' class='c' style='min-height:50px'>${esc(data.tomorrowPlan)}</td></tr><tr><td><b>${Lb.materialsUsed}</b></td><td>${esc(data.materialsUsed)}</td><td><b>${Lb.equipment}</b></td><td>${esc(data.equipment)}</td></tr><tr><td><b>${Lb.workers}</b></td><td colspan='3'>${esc(data.workers)} ${Lb.persons}</td></tr><tr><td class='sh' colspan='4'>${Lb.communication}</td></tr><tr><td colspan='4' class='c'>${esc(data.communication)}</td></tr><tr><td class='sh' colspan='4'>${Lb.otherNotes}</td></tr><tr><td colspan='4' class='c'>${esc(data.otherNotes)}</td></tr><tr><td colspan='2'><b>${Lb.samplingTests}</b></td><td colspan='2'><b>${Lb.qualityInspection}</b></td></tr><tr><td colspan='2' class='c'>${esc(data.samplingTests)}</td><td colspan='2' class='c'>${esc(data.qualityInspection)}</td></tr><tr><td><b>${Lb.supervisor}</b></td><td></td><td><b>${Lb.inspector}</b></td><td>${esc(data.supervisor)}</td></tr></table>${photoHtml}</body></html>`;\n}\nconst pad2 = n => String(n).padStart(2, '0');\nconst now2 = new Date();\nconst genStamp = `${now2.getFullYear()}-${pad2(now2.getMonth() + 1)}-${pad2(now2.getDate())} ${pad2(now2.getHours())}:${pad2(now2.getMinutes())}`;\nconst html = buildHtml(L, d, genStamp);\nlet htmlZH = buildHtml(LZH, dZH, genStamp);\nif (geminiStatus !== 'success') {\n  const warnBanner = \"<div style='background:#fee2e2;border:2px solid #e53e3e;color:#991b1b;padding:8px 12px;margin-bottom:8px;font-weight:bold;font-size:11pt'>⚠️ 自動翻譯失敗，以下內容為原文（非正式中文翻譯），請人工確認 / Translation failed — content below is original language</div>\";\n  htmlZH = htmlZH.replace('<body>', '<body>' + warnBanner);\n}\nconst variants = [\n  { lang: 'contractor', html: html, fileName: d.fileName },\n  { lang: 'zh', html: htmlZH, fileName: d.fileName.replace('.pdf', '_ZH.pdf') }\n];\nreturn [{ json: { ...d, pdfHtml: html, pdfHtmlZH: htmlZH, translatedZH: dZH, geminiStatus, variants } }];"
       },
-      "id": "d2761057-4f0f-44e3-b51a-45629ab55e21",
+      "id": "cf8402b5-fbc3-402a-af61-a70960371611",
       "name": "Generate PDF HTML",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -12784,
-        128
+        -21968,
+        1968
       ]
     },
     {
@@ -70,13 +70,13 @@
           }
         }
       },
-      "id": "7a3424c3-f4f1-4b31-a365-e5112c33b22b",
+      "id": "f39a000a-34c6-431d-9572-dc8bb24a3df5",
       "name": "PDF.co API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -12560,
-        128
+        -21520,
+        1968
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -99,13 +99,13 @@
           }
         }
       },
-      "id": "993e9b0d-cb6c-4195-a77f-736cea56f934",
+      "id": "000da00f-f0f8-4534-bcf7-69df6fc08e63",
       "name": "Download PDF",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -12336,
-        128
+        -20176,
+        1968
       ]
     },
     {
@@ -124,13 +124,13 @@
         },
         "options": {}
       },
-      "id": "42403f80-06e6-4a88-97ba-759a204181a8",
+      "id": "6097c0d8-36cb-43d7-90c2-cadca44e2d77",
       "name": "Google Drive Upload",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -12112,
-        128
+        -19952,
+        1968
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -159,13 +159,13 @@
         "jsonBody": "={{ { type: 'anyone', role: 'reader' } }}",
         "options": {}
       },
-      "id": "780be129-0de7-4c9c-b688-b6e4331d0fb2",
+      "id": "403fa966-71d6-46b5-aa61-2113e479f113",
       "name": "Set Drive Permission",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -11888,
-        128
+        -19728,
+        1968
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -178,13 +178,13 @@
       "parameters": {
         "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst translationFailed = genNode.geminiStatus !== 'success';\nconst variantOrigins = $('Split Out').all();\nconst driveUploads = $('Google Drive Upload').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveFileId = driveUploads[idxOf('contractor')].json.id;\nconst driveUrl = 'https://drive.google.com/file/d/' + driveFileId + '/view';\nconst driveFileIdZH = driveUploads[idxOf('zh')].json.id;\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveFileIdZH + '/view';\nconst lang = d.language || 'en';\nconst W = { en: { sunny: '☀️ Sunny', rainy: '🌧️ Rainy' }, th: { sunny: '☀️ แดดออก', rainy: '🌧️ ฝนตก' }, zh: { sunny: '☀️ 晴天', rainy: '🌧️ 下雨' } };\nconst wC = W[lang] || W.en;\nconst mW = wC[d.morningWeather] || d.morningWeather || '-';\nconst aW = wC[d.afternoonWeather] || d.afternoonWeather || '-';\nconst mWZH = W.zh[d.morningWeather] || d.morningWeather || '-';\nconst aWZH = W.zh[d.afternoonWeather] || d.afternoonWeather || '-';\nconst CL = {\n  en: { title: '✅ Work Report Submitted', morning: 'AM', afternoon: 'PM', date: 'Date', project: 'Project', area: 'Area', weather: 'Weather', workers: 'Workers', location: '📍 Location', workDone: '🔨 Work Done', tomorrow: '📋 Tomorrow Plan', materials: '🧱 Materials', equipment: '⚙️ Equipment', comms: '💬 Communication', notes: '📝 Notes', sampling: '🧪 Sampling', quality: '✔️ Quality Check', download: '📥 Download PDF' },\n  th: { title: '✅ ส่งรายงานสำเร็จ', morning: 'เช้า', afternoon: 'บ่าย', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', weather: 'อากาศ', workers: 'คนงาน', location: '📍 ตำแหน่ง', workDone: '🔨 งานวันนี้', tomorrow: '📋 แผนพรุ่งนี้', materials: '🧱 วัสดุ', equipment: '⚙️ เครื่องมือ', comms: '💬 ประสานงาน', notes: '📝 หมายเหตุ', sampling: '🧪 ตัวอย่าง', quality: '✔️ ตรวจสอบ', download: '📥 ดาวน์โหลด PDF' },\n  zh: { title: '✅ 監工日誌已送出', morning: '上午', afternoon: '下午', date: '日期', project: '工程', area: '廠區', weather: '天氣', workers: '出工人數', location: '📍 施工部位', workDone: '🔨 今日施工', tomorrow: '📋 明日計畫', materials: '🧱 材料', equipment: '⚙️ 機具', comms: '💬 溝通記錄', notes: '📝 其他備注', sampling: '🧪 取樣記錄', quality: '✔️ 品質檢查', download: '📥 下載 PDF' }\n};\nconst cl = CL[lang] || CL.en;\nconst clZH = translationFailed ? { ...CL.zh, title: '⚠️翻譯失敗(原文) ' + CL.zh.title } : CL.zh;\nconst trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';\nfunction kv(label, value) {\n  return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };\n}\nfunction lbl(text) {\n  return { type: 'text', text: text, size: 'xs', color: '#1a73e8', weight: 'bold', margin: 'md' };\n}\nfunction txt(text) {\n  return { type: 'text', text: text, size: 'sm', color: '#333333', wrap: true, margin: 'xs' };\n}\nfunction sep() { return { type: 'separator', margin: 'sm', color: '#eeeeee' }; }\nfunction buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor) {\n  const body = [\n    kv(cl.date, data.date + ' (' + data.weekday + ')'),\n    kv(cl.project, trunc(data.projectName, 50)),\n    kv(cl.area, trunc(data.constructionArea, 50)),\n    kv(cl.weather, cl.morning + ': ' + mWeather + '  ' + cl.afternoon + ': ' + aWeather),\n    kv(cl.workers, String(data.workers || '-')),\n    sep(),\n    lbl(cl.location), txt(trunc(data.constructionLocation, 150)),\n    sep(),\n    lbl(cl.workDone), txt(trunc(data.constructionItems, 200))\n  ];\n  if (data.tomorrowPlan) { body.push(sep()); body.push(lbl(cl.tomorrow)); body.push(txt(trunc(data.tomorrowPlan, 150))); }\n  if (data.materialsUsed || data.equipment) {\n    body.push(sep());\n    if (data.materialsUsed) body.push(kv(cl.materials, trunc(data.materialsUsed, 100)));\n    if (data.equipment) body.push(kv(cl.equipment, trunc(data.equipment, 100)));\n  }\n  if (data.communication) { body.push(sep()); body.push(lbl(cl.comms)); body.push(txt(trunc(data.communication, 150))); }\n  if (data.samplingTests) { body.push(sep()); body.push(lbl(cl.sampling)); body.push(txt(trunc(data.samplingTests, 150))); }\n  if (data.qualityInspection) { body.push(sep()); body.push(lbl(cl.quality)); body.push(txt(trunc(data.qualityInspection, 150))); }\n  if (data.otherNotes) { body.push(sep()); body.push(lbl(cl.notes)); body.push(txt(trunc(data.otherNotes, 150))); }\n  return {\n    type: 'bubble',\n    header: { type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '14px', contents: [{ type: 'text', text: cl.title, color: '#ffffff', weight: 'bold', size: 'md', wrap: true }, { type: 'text', text: String(data.contractor || ''), color: '#ffffffcc', size: 'xs', margin: 'xs' }] },\n    body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: body },\n    footer: { type: 'box', layout: 'vertical', paddingAll: '10px', contents: [{ type: 'button', style: 'primary', color: headerColor, height: 'sm', action: { type: 'uri', label: cl.download, uri: pdfUrl } }] }\n  };\n}\nconst contractorBubble = buildFlex(cl, d, mW, aW, driveUrl, '#1a73e8');\nconst jerryBubble = buildFlex(clZH, dZH, mWZH, aWZH, driveUrlZH, translationFailed ? '#e53e3e' : '#0d7a0d');\nconst contractorFlex = { to: d.lineUserId, messages: [{ type: 'flex', altText: cl.title, contents: contractorBubble }] };\nconst jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: clZH.title, contents: jerryBubble }] };\nfunction escHtml(s) { return String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\nconst JERRY_EMAIL = 'jerry_hsieh@eco-infinic.com';\nconst recipientEmail = (d.supervisorEmail || '').trim() || JERRY_EMAIL;\nconst isJerry = recipientEmail.toLowerCase() === JERRY_EMAIL.toLowerCase();\nconst emailSubject = `${translationFailed ? '⚠️翻譯失敗(原文) - ' : ''}監工日誌通知 - ${d.projectName || ''} - ${d.date || ''}`;\nconst emailHtml = `${translationFailed ? '<p style=\"color:#e53e3e;font-weight:bold\">⚠️ 自動翻譯失敗，本次中文版PDF內容為原文（非正式翻譯），請人工確認後再轉發。</p>' : ''}<p>負責工程師 <b>${escHtml(d.supervisor)}</b> 提交了新的監工日誌。</p><p>工程：${escHtml(d.projectName)}<br>廠區：${escHtml(d.constructionArea)}<br>日期：${escHtml(d.date)}（${escHtml(dZH.weekday)}）<br>廠商：${escHtml(d.contractor)}</p><p><a href=\"${driveUrlZH}\">📥 下載中文版 PDF 報告</a></p>`;\nreturn [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex), isJerry, recipientEmail, emailSubject, emailHtml } }];"
       },
-      "id": "0ec44a63-95d9-47c7-af73-8040c2d9ddef",
+      "id": "588ec57e-d260-462e-a8d1-32059b361c6b",
       "name": "Build Messages",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -10768,
-        128
+        -19504,
+        1968
       ]
     },
     {
@@ -207,13 +207,13 @@
         "jsonBody": "={{ JSON.parse($json.contractorPayload) }}",
         "options": {}
       },
-      "id": "49fe5522-1279-40dd-9fa0-451df3a4de8b",
+      "id": "99fafb66-1159-4273-9a48-80df4a40aff9",
       "name": "LINE → Contractor",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -10544,
-        -64
+        -19280,
+        1776
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -242,13 +242,13 @@
         "jsonBody": "={{ JSON.parse($json.jerryPayload) }}",
         "options": {}
       },
-      "id": "b7496379-2c51-453a-a7e1-cf972c367072",
+      "id": "654a971e-cb0e-4e9d-9639-117d7154423a",
       "name": "LINE → Jerry",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -10320,
-        128
+        -19056,
+        1968
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -280,13 +280,13 @@
         },
         "options": {}
       },
-      "id": "9d50b9f9-c11f-4274-b3ec-49936f49c32a",
+      "id": "ee43b1b1-a4a2-44d0-a4dc-016b5a231956",
       "name": "Is ZH Source?1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -13232,
-        128
+        -22416,
+        1968
       ]
     },
     {
@@ -306,16 +306,16 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: 'You are a professional technical translator for construction site daily reports in the piping and mechanical engineering industry. Translate these fields into natural, professional Traditional Chinese the way a Chinese-speaking site engineer would write them, not a literal word-for-word translation. The input may mix Thai, English, and Chinese within the same field. Translate ALL Thai and English portions so every field ends up fully in Traditional Chinese - do not leave any Thai or English words untranslated, and do not leave a field only partially translated.\\n\\nRules:\\n1. Preserve the list structure exactly: if the input has numbered items (1. 2. 3. ...), output the same number of items in the same order and numbering. Never merge two items into one fragment, and never leave a stray leftover phrase as its own sentence.\\n2. Keep every number and unit exactly as written (quantities, dimensions, tonnage, pipe sizes such as 40S or 10S). Never combine digits from adjacent words into a new number, and never reinterpret a quantity.\\n3. Do NOT translate proper nouns, company names, equipment tag numbers (e.g. TK-309, FN-201C), or engineering standard codes (e.g. ASTM A312 TP304).\\n4. If a list item has no clear separator between short phrases (e.g. \"Normal tools Special tool\"), add a natural Chinese comma or dunhao (\\u3001) so it reads as a clean list instead of fused words.\\n5. Every translated sentence must be grammatically complete and make sense on its own - avoid literal fragments such as a trailing two-word sentence.\\n\\nReturn ONLY a valid JSON object with exactly these same keys. If a field is empty or already fully in Chinese, return it unchanged.\\n\\nInput:\\n' + JSON.stringify({ constructionLocation: $json.constructionLocation || '', constructionItems: $json.constructionItems || '', tomorrowPlan: $json.tomorrowPlan || '', materialsUsed: $json.materialsUsed || '', equipment: $json.equipment || '', communication: $json.communication || '', otherNotes: $json.otherNotes || '', samplingTests: $json.samplingTests || '', qualityInspection: $json.qualityInspection || '' }) }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }) }}",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: 'You are a professional technical translator for construction site daily reports in the piping and mechanical engineering industry. Translate these fields into natural, professional Traditional Chinese the way a Chinese-speaking site engineer would write them, not a literal word-for-word translation. The input may mix Thai, English, and Chinese within the same field. Translate ALL Thai and English portions so every field ends up fully in Traditional Chinese - do not leave any Thai or English words untranslated, and do not leave a field only partially translated.\\n\\nRules:\\n1. Preserve the list structure exactly: if the input has numbered items (1. 2. 3. ...), output the same number of items in the same order and numbering. Never merge two items into one fragment, and never leave a stray leftover phrase as its own sentence.\\n2. Keep every number and unit exactly as written (quantities, dimensions, tonnage, pipe sizes such as 40S or 10S). Never combine digits from adjacent words into a new number, and never reinterpret a quantity.\\n3. Do NOT translate proper nouns, company names, equipment tag numbers (e.g. TK-309, FN-201C), or engineering standard codes (e.g. ASTM A312 TP304).\\n4. If a list item has no clear separator between short phrases (e.g. \"Normal tools Special tool\"), add a natural Chinese comma or dunhao (、) so it reads as a clean list instead of fused words.\\n5. Every translated sentence must be grammatically complete and make sense on its own - avoid literal fragments such as a trailing two-word sentence.\\n\\nReturn ONLY a valid JSON object with exactly these same keys. If a field is empty or already fully in Chinese, return it unchanged.\\n\\nInput:\\n' + JSON.stringify({ constructionLocation: $json.constructionLocation || '', constructionItems: $json.constructionItems || '', tomorrowPlan: $json.tomorrowPlan || '', materialsUsed: $json.materialsUsed || '', equipment: $json.equipment || '', communication: $json.communication || '', otherNotes: $json.otherNotes || '', samplingTests: $json.samplingTests || '', qualityInspection: $json.qualityInspection || '' }) }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }) }}",
         "options": {}
       },
-      "id": "ccb2719a-835c-468a-bdb8-f2fcb002ecc5",
+      "id": "dd4af1d6-a7f2-4892-8611-f0bdaf6dfaf3",
       "name": "Translate to ZH1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -13008,
-        200
+        -22192,
+        2048
       ],
       "retryOnFail": true,
       "maxTries": 2,
@@ -330,17 +330,15 @@
     },
     {
       "parameters": {
-        "resume": "timeInterval",
-        "amount": 3,
-        "unit": "seconds"
+        "amount": 3
       },
-      "id": "b334d98d-2556-490c-b8a5-8dadcaa58a17",
+      "id": "26eae195-7b78-4589-a177-032fd14d59aa",
       "name": "Wait Job",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        -12500,
-        40
+        -21296,
+        1968
       ],
       "webhookId": "b334d98d-wait-en"
     },
@@ -371,13 +369,13 @@
           }
         }
       },
-      "id": "723fbfa3-b307-4bb1-be7b-89f4d1b254d3",
+      "id": "33ddd65f-6c79-46d2-a8c4-52ecb150f491",
       "name": "Check Job",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -12440,
-        40
+        -21072,
+        1904
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -390,13 +388,13 @@
       "parameters": {
         "jsCode": "const items = $input.all();\nconst prevItems = $('Wait Job').all();\nreturn items.map((it, i) => {\n  const prevAttempts = (prevItems[i] && prevItems[i].json.attempts) || 0;\n  return { json: { ...it.json, attempts: prevAttempts + 1 } };\n});"
       },
-      "id": "5ba1677c-7af1-4401-92a4-95a3a211539e",
+      "id": "4413690f-5e3a-49b8-a565-0c7656a9a4d3",
       "name": "Track Attempt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -12380,
-        40
+        -20848,
+        1904
       ]
     },
     {
@@ -423,13 +421,13 @@
         },
         "options": {}
       },
-      "id": "19b6b408-38a8-490d-b223-f65f54a1f10a",
+      "id": "f4a81863-de14-41a8-945d-61989b869791",
       "name": "Job Poll Gate",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -12320,
-        40
+        -20400,
+        1968
       ]
     },
     {
@@ -456,13 +454,13 @@
         },
         "options": {}
       },
-      "id": "2cc822df-cfd2-4296-b917-3f948a4edede",
+      "id": "3480c3b7-899f-4b2f-a5ab-c879cd6152c5",
       "name": "Is Jerry?1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -10544,
-        128
+        -19280,
+        1968
       ]
     },
     {
@@ -472,13 +470,13 @@
         "message": "={{ $json.emailHtml }}",
         "options": {}
       },
-      "id": "6352921c-1f7d-4fb5-9b85-3d35a8a071ad",
+      "id": "f0e59ecf-1a6d-4b62-9ba7-4810f9fa3c1d",
       "name": "Email → Recipient1",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        -10544,
-        320
+        -19280,
+        2160
       ],
       "webhookId": "85942a33-1e24-45fb-a08d-2116aaacf043",
       "credentials": {
@@ -491,29 +489,28 @@
     {
       "parameters": {
         "fieldToSplitOut": "variants",
-        "include": "noOtherFields",
         "options": {}
       },
-      "id": "e2a1c9d4-1b3f-4a7e-9c6d-2f8b5a0e1d33",
+      "id": "23305d3b-2f91-42d3-9f67-84dec8a07da4",
       "name": "Split Out",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        -12672,
-        128
+        -21744,
+        1968
       ]
     },
     {
       "parameters": {
         "jsCode": "const items = $input.all();\nconst isTerminal = j => ['success','failed','aborted'].includes(j.status) || j.attempts >= 20;\nconst allDone = items.every(it => isTerminal(it.json));\nreturn items.map(it => ({ json: { ...it.json, allDone } }));"
       },
-      "id": "f7d3b8a2-6e4c-4f19-8a2d-9c1e5b7f0a44",
+      "id": "85e9880b-edab-4f2c-bfdb-5891b26142a4",
       "name": "Check All Done",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -12360,
-        40
+        -20624,
+        1904
       ]
     }
   ],
@@ -740,7 +737,7 @@
     "timeSavedMode": "fixed",
     "errorWorkflow": "LhO1L9YtYPahglea"
   },
-  "versionId": "fceb1a01-24ee-421b-973b-9e8afd2e0e94",
+  "versionId": "c163d292-4367-4607-8f3b-e0a85dadb514",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "19324eef6ef6ee8cedb30e38298eed3255cf4c84b5e75a4495f95d008351b787"
