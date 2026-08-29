@@ -19,17 +19,17 @@ LIFF 雙語表單 (GitHub Pages)
     ▼
 n8n Cloud Webhook
     │
-    ├─► Prepare Data (Code) — 整理資料、組 Gemini prompt
+    ├─► Prepare Data (Code) — 整理資料
     │
-    ├─► Gemini API (gemini-1.5-flash) — 生成中文報告 + 原文報告
+    ├─► Translate to ZH1 (Gemini) — 泰/英表單才呼叫，中文表單直接跳過
     │
-    ├─► Parse & Format (Code) — 解析 Gemini JSON 回傳
+    ├─► Generate PDF HTML → PDF.co → Google Drive Upload（承包商語言 + 中文雙版）
     │
-    ├─► Notion: Save Report — 寫入監工日誌資料庫
+    ├─► Build Notion Payload1 → Notion: Create Daily Log1 — 寫入 Daily Work Logs 資料庫，並透過 Related Work Item 關聯到 Work Items 裡對應的工程頁面
     │
     ├─► LINE → Contractor — 推送原文報告給承包商
     │
-    └─► LINE → Jerry — 推送中文報告給專案經理
+    └─► LINE → Jerry / Email → Recipient1 — 推送中文報告給負責工程師
 ```
 
 ---
@@ -39,10 +39,11 @@ n8n Cloud Webhook
 | 項目 | 狀態 | 備註 |
 |------|------|------|
 | LIFF 雙語表單 (EN/TH) | ✅ 完成 | GitHub Pages: https://chaiowei.github.io/supervisor-form |
-| n8n 工作流程 | ✅ 已匯入 | ID: OCwh63R7TRuPgdDj |
+| n8n 工作流程 | ✅ 已匯入 | ID: OCwh63R7TRuPgdDj（Supervisor Daily Report v2） |
 | n8n Webhook URL | ✅ 已設定 | https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report |
-| Notion 資料庫 | ✅ 已建立 | ID: 58c0c3ed5e9a476abd0c4047666d0155 |
-| Notion DB ID 寫入工作流程 | ✅ 已硬碼 | Notion: Save Report 節點 |
+| Notion 資料庫 | ✅ 已建立 | Daily Work Logs，ID: 2190dd6f-6b0a-803a-b151-000bc01c3b86 |
+| Notion DB ID 寫入工作流程 | ✅ 已硬碼 | Notion: Create Daily Log1 節點 |
+| Notion Related Work Item 關聯 | ✅ 已串接 | 來源：Google Sheets「Notion工程連結」欄位（每個工程一筆 Work Items 資料庫頁面連結），由 index.html 依選取工程解析後傳入 `notionProjectUrls`，於 Build Notion Payload1 節點轉成 relation ID |
 | index.html Webhook URL | ✅ 已填入 | 已 push 到 GitHub |
 
 ---
@@ -69,11 +70,9 @@ n8n Cloud Webhook
 
 #### 1-A：Credentials（憑證）— 在節點上設定
 
-**Notion: Save Report 節點**
-- 點擊節點 → Credential → 選擇 **Notion2**
-
-**Notion: Get Options 節點**（form-options 鏈的第二個節點）
-- 點擊節點 → Credential → 選擇 **Notion2**
+**Notion: Create Daily Log1 節點**
+- 點擊節點 → Credential → 選擇 **Notion work**
+- 這組憑證背後的 Notion Integration 目前叫「工作首頁」；務必確認「Daily Work Logs」資料庫、以及 Work Items 資料庫底下要被關聯的工程頁面，都已在 Notion 的 Connections 分享給這個 integration，否則會出現 `Could not find database` 404
 
 ---
 

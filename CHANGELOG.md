@@ -1,5 +1,15 @@
 # 更新紀錄
 
+## 2026-08-29
+
+### 監工日誌寫入 Notion
+- 每筆送出的監工日誌會自動寫入 Notion「Daily Work Logs」資料庫（`Progress Desc`／`Issues Encountered`／`Solutions Applied`／`Photo URLs`）。
+- 新增「Related Work Item」自動關聯：依 Google Sheets「Notion工程連結」欄位，把日誌自動連到 Work Items 資料庫裡對應的工程頁面；若某工程尚未設定連結，會在 Progress Desc 開頭加上提醒文字，需手動補關聯。
+- 翻譯失敗時，Notion 記錄本身也會加上警示前綴，不只 LINE／email 才有提示。
+
+### 工作流程檔案同步
+- 將 n8n 上實際運作中的完整工作流程匯出檔同步進 repo：`Supervisor Daily Report v2.json`、`Supervisor Error Notification.json`，取代先前僅記錄局部節點差異的舊版片段檔案。
+
 ## 2026-07-06
 
 ### PDF 表頭調整
