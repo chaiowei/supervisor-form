@@ -531,8 +531,8 @@
         "resource": "databasePage",
         "databaseId": {
           "__rl": true,
-          "value": "2190dd6f-6b0a-803a-b151-000bc01c3b86",
-          "mode": "id"
+          "value": "https://www.notion.so/2190dd6f6b0a80f081a4fe071bce329f",
+          "mode": "url"
         },
         "title": "={{ $json.pageTitle }}",
         "propertiesUi": {

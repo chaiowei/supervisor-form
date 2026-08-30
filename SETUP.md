@@ -41,8 +41,8 @@ n8n Cloud Webhook
 | LIFF 雙語表單 (EN/TH) | ✅ 完成 | GitHub Pages: https://chaiowei.github.io/supervisor-form |
 | n8n 工作流程 | ✅ 已匯入 | ID: OCwh63R7TRuPgdDj（Supervisor Daily Report v2） |
 | n8n Webhook URL | ✅ 已設定 | https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report |
-| Notion 資料庫 | ✅ 已建立 | Daily Work Logs，ID: 2190dd6f-6b0a-803a-b151-000bc01c3b86 |
-| Notion DB ID 寫入工作流程 | ✅ 已硬碼 | Notion: Create Daily Log1 節點 |
+| Notion 資料庫 | ✅ 已建立 | Daily Work Logs，Database ID: 2190dd6f-6b0a-80f0-81a4-fe071bce329f（注意：底層 Data Source/collection ID 是另一個 `2190dd6f-6b0a-803a-b151-000bc01c3b86`，兩者是 Notion 多資料源架構下分開的不同物件，別搞混） |
+| Notion DB 寫入工作流程 | ✅ 已設定 | Notion: Create Daily Log1 節點，`databaseId` 改用 **URL 模式**（`https://www.notion.so/2190dd6f6b0a80f081a4fe071bce329f`），避免手動填 ID 時誤填成 Data Source ID 導致 404 |
 | Notion Related Work Item 關聯 | ✅ 已串接 | 來源：Google Sheets「Notion工程連結」欄位（每個工程一筆 Work Items 資料庫頁面連結），由 index.html 依選取工程解析後傳入 `notionProjectUrls`，於 Build Notion Payload1 節點轉成 relation ID |
 | index.html Webhook URL | ✅ 已填入 | 已 push 到 GitHub |
 
