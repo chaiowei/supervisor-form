@@ -17,7 +17,7 @@
 ## 2026-08-30
 
 ### 修復 Notion 寫入 404（Database ID 與 Data Source ID 搞混）
-- `Notion: Create Daily Log1` 節點的 `databaseId` 原本硬編碼填的是「Daily Work Logs」的 **Data Source（collection）ID**（`2190dd6f-6b0a-803a-b151-000bc01c3b86`），但 n8n 建立頁面時需要的是**資料庫本身的 ID**（`2190dd6f-6b0a-80f0-81a4-fe071bce329f`）——這是 Notion 多資料源架構下，同一個資料庫「外殼」跟「底層資料表」被拆成兩個不同 ID 所致，即使分享權限完全正確，用錯 ID 一樣會 404。
+- `Notion: Create Daily Log` 節點的 `databaseId` 原本硬編碼填的是「Daily Work Logs」的 **Data Source（collection）ID**（`2190dd6f-6b0a-803a-b151-000bc01c3b86`），但 n8n 建立頁面時需要的是**資料庫本身的 ID**（`2190dd6f-6b0a-80f0-81a4-fe071bce329f`）——這是 Notion 多資料源架構下，同一個資料庫「外殼」跟「底層資料表」被拆成兩個不同 ID 所致，即使分享權限完全正確，用錯 ID 一樣會 404。
 - 改成 **URL 模式**（直接貼資料庫網址讓 n8n 自己解析 ID），避免日後再次手動填錯 ID。
 
 ## 2026-08-29
