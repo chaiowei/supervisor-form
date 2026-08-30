@@ -13,7 +13,7 @@
       "typeVersion": 2,
       "position": [
         -22864,
-        1968
+        1616
       ],
       "webhookId": "supervisor-report"
     },
@@ -27,7 +27,7 @@
       "typeVersion": 2,
       "position": [
         -22640,
-        1968
+        1616
       ]
     },
     {
@@ -40,7 +40,7 @@
       "typeVersion": 2,
       "position": [
         -21968,
-        1968
+        1616
       ]
     },
     {
@@ -76,7 +76,7 @@
       "typeVersion": 4.2,
       "position": [
         -21520,
-        1968
+        1616
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -105,7 +105,7 @@
       "typeVersion": 4.2,
       "position": [
         -20176,
-        1968
+        1616
       ]
     },
     {
@@ -130,7 +130,7 @@
       "typeVersion": 3,
       "position": [
         -19952,
-        1968
+        1616
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -165,7 +165,7 @@
       "typeVersion": 4.2,
       "position": [
         -19728,
-        1968
+        1616
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -184,7 +184,7 @@
       "typeVersion": 2,
       "position": [
         -19504,
-        1968
+        1808
       ]
     },
     {
@@ -213,7 +213,7 @@
       "typeVersion": 4.2,
       "position": [
         -19280,
-        1776
+        1616
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -248,7 +248,7 @@
       "typeVersion": 4.2,
       "position": [
         -19056,
-        1904
+        1808
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -286,7 +286,7 @@
       "typeVersion": 2,
       "position": [
         -22416,
-        1968
+        1616
       ]
     },
     {
@@ -315,7 +315,7 @@
       "typeVersion": 4.2,
       "position": [
         -22192,
-        2048
+        1696
       ],
       "retryOnFail": true,
       "maxTries": 2,
@@ -338,7 +338,7 @@
       "typeVersion": 1.1,
       "position": [
         -21296,
-        1968
+        1616
       ],
       "webhookId": "b334d98d-wait-en"
     },
@@ -375,7 +375,7 @@
       "typeVersion": 4.2,
       "position": [
         -21072,
-        1904
+        1552
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -394,7 +394,7 @@
       "typeVersion": 2,
       "position": [
         -20848,
-        1904
+        1552
       ]
     },
     {
@@ -427,7 +427,7 @@
       "typeVersion": 2,
       "position": [
         -20400,
-        1968
+        1616
       ]
     },
     {
@@ -460,7 +460,7 @@
       "typeVersion": 2,
       "position": [
         -19280,
-        1968
+        1808
       ]
     },
     {
@@ -476,7 +476,7 @@
       "typeVersion": 2.1,
       "position": [
         -19280,
-        2160
+        2000
       ],
       "webhookId": "85942a33-1e24-45fb-a08d-2116aaacf043",
       "credentials": {
@@ -497,7 +497,7 @@
       "typeVersion": 1,
       "position": [
         -21744,
-        1968
+        1616
       ]
     },
     {
@@ -510,7 +510,7 @@
       "typeVersion": 2,
       "position": [
         -20624,
-        1904
+        1552
       ]
     },
     {
@@ -522,7 +522,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -19488,
+        -19504,
         1424
       ]
     },
@@ -566,7 +566,7 @@
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        -19264,
+        -19280,
         1424
       ],
       "retryOnFail": true,
@@ -581,7 +581,80 @@
       "continueOnFail": true
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "jerry-hsieh.app.n8n.cloud",
+            "user-agent": "Mozilla/5.0 (Linux; Android 16; SM-A736B Build/BP2A.250605.031.A3; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/152.0.7977.64 Mobile Safari/537.36 Line/26.11.0 LIFF",
+            "content-length": "1569",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "accept-language": "th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "1.47.69.193",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "TH",
+            "cf-ray": "a32c831a8fae9b50-BKK",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "origin": "https://chaiowei.github.io",
+            "priority": "u=1, i",
+            "referer": "https://chaiowei.github.io/",
+            "sec-ch-ua": "\"Chromium\";v=\"152\", \"Not?A_Brand\";v=\"24\", \"Android WebView\";v=\"152\"",
+            "sec-ch-ua-mobile": "?1",
+            "sec-ch-ua-platform": "\"Android\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "1.47.69.193, 162.158.204.132",
+            "x-forwarded-host": "jerry-hsieh.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-69-774f776884-svrfk",
+            "x-is-trusted": "yes",
+            "x-real-ip": "1.47.69.193",
+            "x-requested-with": "jp.naver.line.android"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "supervisor": "謝喬幃/Jerry_HSIEH",
+            "contractor": "MT Engineering",
+            "projectName": "Pelletizer & Pneumatic Conveying System Modification (Plant 1)",
+            "constructionArea": "Factory 1",
+            "date": "2026-08-29",
+            "morningWeather": "sunny",
+            "afternoonWeather": "rainy",
+            "constructionLocation": "CB treatment zone ",
+            "constructionItems": "1. Installation TK-101C and installation  loadcell \n2. Installation  TK-101A , Installation  loadcell \n3. Installation TK-F101C and Accessories \n4. Installation extension body jet mill and Accessories \n5. Installation piping jet mill C to Bag filter TK-201C\n6. Installation Magnatic seperator form TK-201A,B,C to MBF-306C\n7. Installation Magnatic form TK-216A to TK-101C,B ",
+            "tomorrowPlan": "1. Installation TK-101C and installation  loadcell \n2. Installation  TK-101A , Installation  loadcell \n3. Installation TK-F101C and Accessories \n4. Installation extension body jet mill and Accessories \n5. Installation piping jet mill C to Bag filter TK-201C\n6. Installation Magnatic seperator form TK-201A,B,C to MBF-306C\n7. Installation Magnatic form TK-216A to TK-101C,B ",
+            "workers": "46",
+            "materialsUsed": "1. Steel structure SS400 \n2. Stainless steel piping \n3. Gulvanized steel piping ",
+            "equipment": "1. Mobile crane 12,50 tons \n2. Forklift 3 ton",
+            "communication": "-",
+            "otherNotes": "-",
+            "samplingTests": "-",
+            "qualityInspection": "",
+            "lineUserId": "Ud0537ce201ec49f1a44ab45dc5d4c34d",
+            "lineDisplayName": "Anuruk Mata™",
+            "supervisorEmail": "jerry_hsieh@eco-infinic.com",
+            "language": "th",
+            "submittedAt": "2026-08-29T15:15:35.156Z",
+            "photoUrls": [],
+            "photoCount": 0
+          },
+          "webhookUrl": "https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
   "connections": {
     "Webhook": {
       "main": [
@@ -816,11 +889,12 @@
     "executionOrder": "v1",
     "saveManualExecutions": true,
     "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false,
+    "availableInMCP": true,
     "timeSavedMode": "fixed",
-    "errorWorkflow": "LhO1L9YtYPahglea"
+    "errorWorkflow": "LhO1L9YtYPahglea",
+    "timeSavedPerExecution": 0
   },
-  "versionId": "3d0858f6-778c-40d6-b3ca-66ceed020dbe",
+  "versionId": "3ca50b12-a097-4242-9449-957dea816bb2",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "19324eef6ef6ee8cedb30e38298eed3255cf4c84b5e75a4495f95d008351b787"
