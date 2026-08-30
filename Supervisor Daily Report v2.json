@@ -13,7 +13,7 @@
       "typeVersion": 2,
       "position": [
         -22864,
-        1616
+        1568
       ],
       "webhookId": "supervisor-report"
     },
@@ -27,7 +27,7 @@
       "typeVersion": 2,
       "position": [
         -22640,
-        1616
+        1568
       ]
     },
     {
@@ -40,7 +40,7 @@
       "typeVersion": 2,
       "position": [
         -21968,
-        1616
+        1568
       ]
     },
     {
@@ -76,7 +76,7 @@
       "typeVersion": 4.2,
       "position": [
         -21520,
-        1616
+        1568
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -105,7 +105,7 @@
       "typeVersion": 4.2,
       "position": [
         -20176,
-        1616
+        1568
       ]
     },
     {
@@ -130,7 +130,7 @@
       "typeVersion": 3,
       "position": [
         -19952,
-        1616
+        1568
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -165,7 +165,7 @@
       "typeVersion": 4.2,
       "position": [
         -19728,
-        1616
+        1568
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -184,7 +184,7 @@
       "typeVersion": 2,
       "position": [
         -19504,
-        1808
+        1760
       ]
     },
     {
@@ -213,7 +213,7 @@
       "typeVersion": 4.2,
       "position": [
         -19280,
-        1616
+        1568
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -247,8 +247,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -19056,
-        1808
+        -19040,
+        1696
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -286,7 +286,7 @@
       "typeVersion": 2,
       "position": [
         -22416,
-        1616
+        1568
       ]
     },
     {
@@ -315,7 +315,7 @@
       "typeVersion": 4.2,
       "position": [
         -22192,
-        1696
+        1640
       ],
       "retryOnFail": true,
       "maxTries": 2,
@@ -338,7 +338,7 @@
       "typeVersion": 1.1,
       "position": [
         -21296,
-        1616
+        1568
       ],
       "webhookId": "b334d98d-wait-en"
     },
@@ -375,7 +375,7 @@
       "typeVersion": 4.2,
       "position": [
         -21072,
-        1552
+        1496
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -394,7 +394,7 @@
       "typeVersion": 2,
       "position": [
         -20848,
-        1552
+        1496
       ]
     },
     {
@@ -427,7 +427,7 @@
       "typeVersion": 2,
       "position": [
         -20400,
-        1616
+        1568
       ]
     },
     {
@@ -460,7 +460,7 @@
       "typeVersion": 2,
       "position": [
         -19280,
-        1808
+        1760
       ]
     },
     {
@@ -476,7 +476,7 @@
       "typeVersion": 2.1,
       "position": [
         -19280,
-        2000
+        1952
       ],
       "webhookId": "85942a33-1e24-45fb-a08d-2116aaacf043",
       "credentials": {
@@ -497,7 +497,7 @@
       "typeVersion": 1,
       "position": [
         -21744,
-        1616
+        1568
       ]
     },
     {
@@ -510,87 +510,20 @@
       "typeVersion": 2,
       "position": [
         -20624,
-        1552
+        1496
       ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst translationFailed = genNode.geminiStatus !== 'success';\n\nconst variantOrigins = $('Split Out').all();\nconst driveUploads = $('Google Drive Upload').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveUrl = 'https://drive.google.com/file/d/' + driveUploads[idxOf('contractor')].json.id + '/view';\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveUploads[idxOf('zh')].json.id + '/view';\n\n// notionProjectUrls comes from index.html, resolved client-side from the\n// Google Sheets \"Notion工程連結\" column for each selected project.\nconst rawUrls = Array.isArray(d.notionProjectUrls) ? d.notionProjectUrls : String(d.notionProjectUrls || '').split(',');\nconst toPageId = url => {\n  const m = String(url || '').match(/([0-9a-f]{32})(?:[?#]|$)/i);\n  if (!m) return null;\n  const h = m[1];\n  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;\n};\nconst relatedWorkItemIds = rawUrls.map(toPageId).filter(Boolean);\nconst unmatchedCount = rawUrls.filter(u => String(u || '').trim() && !toPageId(u)).length;\n\nconst warnPrefix = translationFailed ? '⚠️ 自動翻譯失敗，以下為原文，請人工確認 / ' : '';\nconst unmatchedNote = unmatchedCount > 0\n  ? `⚠️ 有 ${unmatchedCount} 個工程在 Google Sheets 裡尚未設定 Notion 連結，Related Work Item 未自動關聯，請手動補上。\\n\\n`\n  : '';\n\nconst progressDesc = unmatchedNote + [\n  `${warnPrefix}施工部位：${d.constructionLocation || '-'}`,\n  `出工人數：${d.workers || '-'}人`,\n  '',\n  '今日施工項目：',\n  dZH.constructionItems || d.constructionItems || '-',\n  '',\n  '明日預計工作：',\n  dZH.tomorrowPlan || d.tomorrowPlan || '-',\n  '',\n  `供給材料：${dZH.materialsUsed || d.materialsUsed || '-'}`,\n  `機具使用：${dZH.equipment || d.equipment || '-'}`,\n  '',\n  `📥 承包商版 PDF: ${driveUrl}`,\n  `📥 中文版 PDF: ${driveUrlZH}`\n].join('\\n');\n\nreturn [{\n  json: {\n    pageTitle: `${d.date} 監工日誌`,\n    logDate: d.date,\n    progressDesc,\n    issuesEncountered: `與廠商溝通協調記錄：${dZH.communication || d.communication || '無'}`,\n    solutionsApplied: `其他重要事項記錄：${dZH.otherNotes || d.otherNotes || '無'}`,\n    photoUrls: (d.photoUrls || []).join('\\n'),\n    relatedWorkItemIds\n  }\n}];\n"
-      },
-      "id": "5953655c-0969-4e7a-89ac-5a8ed56e9c37",
-      "name": "Build Notion Payload1",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -19504,
-        1424
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "databasePage",
-        "databaseId": {
-          "__rl": true,
-          "value": "https://www.notion.so/2190dd6f6b0a80f081a4fe071bce329f",
-          "mode": "url"
-        },
-        "title": "={{ $json.pageTitle }}",
-        "propertiesUi": {
-          "propertyValues": [
-            {
-              "key": "Progress Desc|rich_text",
-              "textContent": "={{ $json.progressDesc }}"
-            },
-            {
-              "key": "Issues Encountered|rich_text",
-              "textContent": "={{ $json.issuesEncountered }}"
-            },
-            {
-              "key": "Solutions Applied|rich_text",
-              "textContent": "={{ $json.solutionsApplied }}"
-            },
-            {
-              "key": "Photo URLs|rich_text",
-              "textContent": "={{ $json.photoUrls }}"
-            },
-            {
-              "key": "Related Work Item|relation",
-              "relationValue": "={{ $json.relatedWorkItemIds }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "724f4ee9-4c9d-455a-85bf-744ef1af7473",
-      "name": "Notion: Create Daily Log1",
-      "type": "n8n-nodes-base.notion",
-      "typeVersion": 2.2,
-      "position": [
-        -19280,
-        1424
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 3000,
-      "credentials": {
-        "notionApi": {
-          "id": "3u39RvLZmB6m91JE",
-          "name": "Notion work"
-        }
-      },
-      "continueOnFail": true
     },
     {
       "parameters": {
         "jsCode": "const d = $('Prepare Data').first().json;\nconst photoUrls = d.photoUrls || [];\nconst pageId = $json.id;\nif (!photoUrls.length) return [];\nconst children = photoUrls.map(url => ({\n  object: 'block',\n  type: 'image',\n  image: { type: 'external', external: { url } }\n}));\nreturn [{ json: { pageId, children } }];"
       },
-      "id": "d58ffcd2-f90f-4f33-b437-f647d6f3cef3",
+      "id": "7df4d677-48d6-44ea-a88c-37d860db6951",
       "name": "Build Photo Blocks",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         -19056,
-        1424
+        1376
       ]
     },
     {
@@ -617,24 +550,96 @@
         "jsonBody": "={{ JSON.stringify({ children: $json.children }) }}",
         "options": {}
       },
-      "id": "4e83d48b-65b9-4726-9fa4-04a2140a51e6",
+      "id": "467f98a2-35fc-4778-adff-271d384352a1",
       "name": "Notion: Append Photos",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         -18832,
-        1424
+        1376
       ],
       "retryOnFail": true,
       "maxTries": 2,
       "waitBetweenTries": 2000,
-      "continueOnFail": true,
       "credentials": {
         "notionApi": {
           "id": "3u39RvLZmB6m91JE",
           "name": "Notion work"
         }
-      }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst translationFailed = genNode.geminiStatus !== 'success';\n\nconst variantOrigins = $('Split Out').all();\nconst driveUploads = $('Google Drive Upload').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveUrl = 'https://drive.google.com/file/d/' + driveUploads[idxOf('contractor')].json.id + '/view';\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveUploads[idxOf('zh')].json.id + '/view';\n\n// notionProjectUrls comes from index.html, resolved client-side from the\n// Google Sheets \"Notion工程連結\" column for each selected project.\nconst rawUrls = Array.isArray(d.notionProjectUrls) ? d.notionProjectUrls : String(d.notionProjectUrls || '').split(',');\nconst toPageId = url => {\n  const m = String(url || '').match(/([0-9a-f]{32})(?:[?#]|$)/i);\n  if (!m) return null;\n  const h = m[1];\n  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;\n};\nconst relatedWorkItemIds = rawUrls.map(toPageId).filter(Boolean);\nconst unmatchedCount = rawUrls.filter(u => String(u || '').trim() && !toPageId(u)).length;\n\nconst warnPrefix = translationFailed ? '⚠️ 自動翻譯失敗，以下為原文，請人工確認 / ' : '';\nconst unmatchedNote = unmatchedCount > 0\n  ? `⚠️ 有 ${unmatchedCount} 個工程在 Google Sheets 裡尚未設定 Notion 連結，Related Work Item 未自動關聯，請手動補上。\\n\\n`\n  : '';\n\nconst progressDesc = unmatchedNote + [\n  `${warnPrefix}施工部位：${d.constructionLocation || '-'}`,\n  `出工人數：${d.workers || '-'}人`,\n  '',\n  '今日施工項目：',\n  dZH.constructionItems || d.constructionItems || '-',\n  '',\n  '明日預計工作：',\n  dZH.tomorrowPlan || d.tomorrowPlan || '-',\n  '',\n  `供給材料：${dZH.materialsUsed || d.materialsUsed || '-'}`,\n  `機具使用：${dZH.equipment || d.equipment || '-'}`,\n  '',\n  `📥 承包商版 PDF: ${driveUrl}`,\n  `📥 中文版 PDF: ${driveUrlZH}`\n].join('\\n');\n\nreturn [{\n  json: {\n    pageTitle: `${d.date} 監工日誌`,\n    logDate: d.date,\n    progressDesc,\n    issuesEncountered: `與廠商溝通協調記錄：${dZH.communication || d.communication || '無'}`,\n    solutionsApplied: `其他重要事項記錄：${dZH.otherNotes || d.otherNotes || '無'}`,\n    photoUrls: (d.photoUrls || []).join('\\n'),\n    relatedWorkItemIds\n  }\n}];\n"
+      },
+      "id": "5953655c-0969-4e7a-89ac-5a8ed56e9c37",
+      "name": "Build Notion Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -19504,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "https://www.notion.so/2190dd6f6b0a80f081a4fe071bce329f",
+          "mode": "url"
+        },
+        "title": "={{ $('Build Notion Payload').item.json.pageTitle }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Progress Desc|rich_text",
+              "textContent": "={{ $('Build Notion Payload').item.json.progressDesc }}"
+            },
+            {
+              "key": "Issues Encountered|rich_text",
+              "textContent": "={{ $('Build Notion Payload').item.json.issuesEncountered }}"
+            },
+            {
+              "key": "Solutions Applied|rich_text",
+              "textContent": "={{ $('Build Notion Payload').item.json.solutionsApplied }}"
+            },
+            {
+              "key": "Photo URLs|rich_text",
+              "textContent": "={{ $('Build Notion Payload').item.json.photoUrls }}"
+            },
+            {
+              "key": "Related Work Item|relation",
+              "relationValue": "={{ $json.relatedWorkItemIds }}"
+            },
+            {
+              "key": "Log Date|date",
+              "includeTime": false,
+              "date": "={{ $('Build Notion Payload').item.json.logDate }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "724f4ee9-4c9d-455a-85bf-744ef1af7473",
+      "name": "Notion: Create Daily Log",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -19280,
+        1376
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "notionApi": {
+          "id": "3u39RvLZmB6m91JE",
+          "name": "Notion work"
+        }
+      },
+      "continueOnFail": true
     }
   ],
   "pinData": {
@@ -643,16 +648,16 @@
         "json": {
           "headers": {
             "host": "jerry-hsieh.app.n8n.cloud",
-            "user-agent": "Mozilla/5.0 (Linux; Android 16; SM-A736B Build/BP2A.250605.031.A3; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/152.0.7977.64 Mobile Safari/537.36 Line/26.11.0 LIFF",
-            "content-length": "1569",
+            "user-agent": "Mozilla/5.0 (Linux; Android 16; CPH2811 Build/AP3A.240617.008; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/152.0.7977.64 Mobile Safari/537.36 Line/26.13.1 LIFF",
+            "content-length": "861",
             "accept": "*/*",
             "accept-encoding": "gzip, br",
-            "accept-language": "th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7",
+            "accept-language": "zh-TW,zh;q=0.9,th-TH;q=0.8,th;q=0.7,en-US;q=0.6,en;q=0.5",
             "cdn-loop": "cloudflare; loops=1; subreqs=1",
-            "cf-connecting-ip": "1.47.69.193",
+            "cf-connecting-ip": "122.154.123.106",
             "cf-ew-via": "15",
             "cf-ipcountry": "TH",
-            "cf-ray": "a32c831a8fae9b50-BKK",
+            "cf-ray": "a33490436a7f894d-BKK",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "cf-worker": "n8n.cloud",
             "content-type": "application/json",
@@ -665,13 +670,13 @@
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "cross-site",
-            "x-forwarded-for": "1.47.69.193, 162.158.204.132",
+            "x-forwarded-for": "122.154.123.106, 172.70.116.180",
             "x-forwarded-host": "jerry-hsieh.app.n8n.cloud",
             "x-forwarded-port": "443",
             "x-forwarded-proto": "https",
-            "x-forwarded-server": "traefik-prod-users-gwc-69-774f776884-svrfk",
+            "x-forwarded-server": "traefik-prod-users-gwc-69-774f776884-5vj78",
             "x-is-trusted": "yes",
-            "x-real-ip": "1.47.69.193",
+            "x-real-ip": "122.154.123.106",
             "x-requested-with": "jp.naver.line.android"
           },
           "params": {},
@@ -680,27 +685,33 @@
             "supervisor": "謝喬幃/Jerry_HSIEH",
             "contractor": "MT Engineering",
             "projectName": "Pelletizer & Pneumatic Conveying System Modification (Plant 1)",
-            "constructionArea": "Factory 1",
-            "date": "2026-08-29",
+            "constructionArea": "Dryer zone",
+            "date": "2026-08-30",
             "morningWeather": "sunny",
             "afternoonWeather": "rainy",
-            "constructionLocation": "CB treatment zone ",
-            "constructionItems": "1. Installation TK-101C and installation  loadcell \n2. Installation  TK-101A , Installation  loadcell \n3. Installation TK-F101C and Accessories \n4. Installation extension body jet mill and Accessories \n5. Installation piping jet mill C to Bag filter TK-201C\n6. Installation Magnatic seperator form TK-201A,B,C to MBF-306C\n7. Installation Magnatic form TK-216A to TK-101C,B ",
-            "tomorrowPlan": "1. Installation TK-101C and installation  loadcell \n2. Installation  TK-101A , Installation  loadcell \n3. Installation TK-F101C and Accessories \n4. Installation extension body jet mill and Accessories \n5. Installation piping jet mill C to Bag filter TK-201C\n6. Installation Magnatic seperator form TK-201A,B,C to MBF-306C\n7. Installation Magnatic form TK-216A to TK-101C,B ",
-            "workers": "46",
-            "materialsUsed": "1. Steel structure SS400 \n2. Stainless steel piping \n3. Gulvanized steel piping ",
-            "equipment": "1. Mobile crane 12,50 tons \n2. Forklift 3 ton",
-            "communication": "-",
-            "otherNotes": "-",
-            "samplingTests": "-",
+            "constructionLocation": "Dryer zone ",
+            "constructionItems": "Welding",
+            "tomorrowPlan": "",
+            "workers": "25",
+            "materialsUsed": "",
+            "equipment": "",
+            "communication": "",
+            "otherNotes": "",
+            "samplingTests": "",
             "qualityInspection": "",
-            "lineUserId": "Ud0537ce201ec49f1a44ab45dc5d4c34d",
-            "lineDisplayName": "Anuruk Mata™",
+            "lineUserId": "U11eb62b76698f12f07f4435abc808bc4",
+            "lineDisplayName": "喬幃",
             "supervisorEmail": "jerry_hsieh@eco-infinic.com",
-            "language": "th",
-            "submittedAt": "2026-08-29T15:15:35.156Z",
-            "photoUrls": [],
-            "photoCount": 0
+            "language": "en",
+            "submittedAt": "2026-08-30T14:42:39.869Z",
+            "photoUrls": [
+              "https://i.ibb.co/SwjhXsYq/6d4a57c08c73.jpg",
+              "https://i.ibb.co/YFtT8jC1/411839cf8101.jpg"
+            ],
+            "photoCount": 2,
+            "notionProjectUrls": [
+              "https://app.notion.com/p/2ff0dd6f6b0a80cd972dc041fe44a633?source=copy_link"
+            ]
           },
           "webhookUrl": "https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report",
           "executionMode": "production"
@@ -787,7 +798,7 @@
             "index": 0
           },
           {
-            "node": "Build Notion Payload1",
+            "node": "Build Notion Payload",
             "type": "main",
             "index": 0
           }
@@ -928,33 +939,38 @@
         ]
       ]
     },
-    "Build Notion Payload1": {
-      "main": [
-        [
-          {
-            "node": "Notion: Create Daily Log1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Notion: Create Daily Log1": {
-      "main": [
-        [
-          {
-            "node": "Build Photo Blocks",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Build Photo Blocks": {
       "main": [
         [
           {
             "node": "Notion: Append Photos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Notion Payload": {
+      "main": [
+        [
+          {
+            "node": "Notion: Create Daily Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion: Append Photos": {
+      "main": [
+        []
+      ]
+    },
+    "Notion: Create Daily Log": {
+      "main": [
+        [
+          {
+            "node": "Build Photo Blocks",
             "type": "main",
             "index": 0
           }
@@ -972,7 +988,7 @@
     "errorWorkflow": "LhO1L9YtYPahglea",
     "timeSavedPerExecution": 0
   },
-  "versionId": "3ca50b12-a097-4242-9449-957dea816bb2",
+  "versionId": "25dbd1fd-4fdf-47ae-a075-edc5bbbedacb",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "19324eef6ef6ee8cedb30e38298eed3255cf4c84b5e75a4495f95d008351b787"
