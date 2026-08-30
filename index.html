@@ -532,6 +532,7 @@ let supervisorEmailMap = {};
 // projectsByContractor[contractorName] = [project names under that contractor]
 let contractorsByEngineer = {};
 let projectsByContractor = {};
+let projectNotionUrlMap = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
@@ -541,7 +542,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const supervisors = [];
     csv.split('\n').slice(1).forEach(row => {
       const cols = row.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-      const [name, type, enabled, email, parent] = cols;
+      const [name, type, enabled, email, parent, notionLink] = cols;
       if (!name || enabled !== 'TRUE') return;
       if (type === '監工人員') {
         supervisors.push(name);
@@ -554,6 +555,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const key = parent || '';
         if (!projectsByContractor[key]) projectsByContractor[key] = [];
         projectsByContractor[key].push(name);
+        // 6th CSV column: "Notion工程連結" — the project's Work Item page in
+        // Notion, used server-side to auto-link the daily log's Related Work Item.
+        if (notionLink) projectNotionUrlMap[name] = notionLink;
       }
     });
     // Replace the "Loading options..." placeholder now that the hierarchy is
@@ -1274,6 +1278,7 @@ async function proceedSubmit() {
       submittedAt: new Date().toISOString(),
       photoUrls,
       photoCount: photoUrls.length,
+      notionProjectUrls: selectedProjects.map(p => projectNotionUrlMap[p] || ''),
     };
     const fetchPromise = fetch(CFG.N8N_WEBHOOK_URL, {
       method: 'POST',

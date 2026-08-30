@@ -1,5 +1,12 @@
 # 更新紀錄
 
+## 2026-08-30（續）
+
+### 修復 Related Work Item 一直沒有自動關聯的問題
+- 根本原因：n8n 後端一直預期 `index.html` 會從 Google Sheets 選項 CSV 的「Notion工程連結」欄位（第 6 欄），把每個選取工程對應的 Notion 頁面連結送進 `notionProjectUrls`，但前端這段邏輯其實從沒被實作過，所以這個欄位永遠是空的，Related Work Item 自然永遠關聯不到。
+- 修好了：`index.html` 現在會讀取 CSV 第 6 欄（工程名稱列的 Notion 連結），存成 `projectNotionUrlMap`，送出表單時依目前選取的工程組成 `notionProjectUrls` 陣列一起送出。
+- 提醒：Google Sheets 選項表要記得把每個「工程名稱」列的第 6 欄填上該工程在 Notion Work Items 資料庫裡的頁面連結，沒填的工程仍會照舊只顯示在 Progress Desc、不會自動關聯。
+
 ## 2026-08-30
 
 ### 修復 Notion 寫入 404（Database ID 與 Data Source ID 搞混）
