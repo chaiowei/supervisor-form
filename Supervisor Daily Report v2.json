@@ -176,75 +176,6 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Prepare Data').first().json;\nconst names = String(d.projectName || '').split(',').map(s => s.trim()).filter(Boolean);\nreturn names.map(name => ({ json: { projectName: name } }));"
-      },
-      "id": "f2180778-deb7-4abb-9064-e52c903ee0c7",
-      "name": "Split Project Names",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -19728,
-        1200
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.notion.com/v1/data_sources/2190dd6f-6b0a-80de-a93b-000bc5c1fc4e/query",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "notionApi",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Notion-Version",
-              "value": "2025-09-03"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ filter: { property: '名稱', title: { equals: $json.projectName } }, page_size: 1 }) }}",
-        "options": {}
-      },
-      "id": "9d37a8e5-42c1-432d-80ab-16a8ac411519",
-      "name": "Notion: Find Work Item",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -19600,
-        1200
-      ],
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 2000,
-      "continueOnFail": true,
-      "credentials": {
-        "notionApi": {
-          "id": "3u39RvLZmB6m91JE",
-          "name": "Notion work"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst ids = [];\nlet unmatchedCount = 0;\nfor (const it of items) {\n  const results = it.json.results;\n  if (Array.isArray(results) && results.length > 0) {\n    ids.push(results[0].id);\n  } else {\n    unmatchedCount++;\n  }\n}\nreturn [{ json: { relatedWorkItemIds: ids, unmatchedCount } }];"
-      },
-      "id": "7706b6a4-1dce-4d5a-81cc-c7d1ed690ac1",
-      "name": "Aggregate Work Item IDs",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -19488,
-        1200
-      ]
-    },
-    {
-      "parameters": {
         "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst translationFailed = genNode.geminiStatus !== 'success';\nconst variantOrigins = $('Split Out').all();\nconst driveUploads = $('Google Drive Upload').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveFileId = driveUploads[idxOf('contractor')].json.id;\nconst driveUrl = 'https://drive.google.com/file/d/' + driveFileId + '/view';\nconst driveFileIdZH = driveUploads[idxOf('zh')].json.id;\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveFileIdZH + '/view';\nconst lang = d.language || 'en';\nconst W = { en: { sunny: '☀️ Sunny', rainy: '🌧️ Rainy' }, th: { sunny: '☀️ แดดออก', rainy: '🌧️ ฝนตก' }, zh: { sunny: '☀️ 晴天', rainy: '🌧️ 下雨' } };\nconst wC = W[lang] || W.en;\nconst mW = wC[d.morningWeather] || d.morningWeather || '-';\nconst aW = wC[d.afternoonWeather] || d.afternoonWeather || '-';\nconst mWZH = W.zh[d.morningWeather] || d.morningWeather || '-';\nconst aWZH = W.zh[d.afternoonWeather] || d.afternoonWeather || '-';\nconst CL = {\n  en: { title: '✅ Work Report Submitted', morning: 'AM', afternoon: 'PM', date: 'Date', project: 'Project', area: 'Area', weather: 'Weather', workers: 'Workers', location: '📍 Location', workDone: '🔨 Work Done', tomorrow: '📋 Tomorrow Plan', materials: '🧱 Materials', equipment: '⚙️ Equipment', comms: '💬 Communication', notes: '📝 Notes', sampling: '🧪 Sampling', quality: '✔️ Quality Check', download: '📥 Download PDF' },\n  th: { title: '✅ ส่งรายงานสำเร็จ', morning: 'เช้า', afternoon: 'บ่าย', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', weather: 'อากาศ', workers: 'คนงาน', location: '📍 ตำแหน่ง', workDone: '🔨 งานวันนี้', tomorrow: '📋 แผนพรุ่งนี้', materials: '🧱 วัสดุ', equipment: '⚙️ เครื่องมือ', comms: '💬 ประสานงาน', notes: '📝 หมายเหตุ', sampling: '🧪 ตัวอย่าง', quality: '✔️ ตรวจสอบ', download: '📥 ดาวน์โหลด PDF' },\n  zh: { title: '✅ 監工日誌已送出', morning: '上午', afternoon: '下午', date: '日期', project: '工程', area: '廠區', weather: '天氣', workers: '出工人數', location: '📍 施工部位', workDone: '🔨 今日施工', tomorrow: '📋 明日計畫', materials: '🧱 材料', equipment: '⚙️ 機具', comms: '💬 溝通記錄', notes: '📝 其他備注', sampling: '🧪 取樣記錄', quality: '✔️ 品質檢查', download: '📥 下載 PDF' }\n};\nconst cl = CL[lang] || CL.en;\nconst clZH = translationFailed ? { ...CL.zh, title: '⚠️翻譯失敗(原文) ' + CL.zh.title } : CL.zh;\nconst trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';\nfunction kv(label, value) {\n  return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };\n}\nfunction lbl(text) {\n  return { type: 'text', text: text, size: 'xs', color: '#1a73e8', weight: 'bold', margin: 'md' };\n}\nfunction txt(text) {\n  return { type: 'text', text: text, size: 'sm', color: '#333333', wrap: true, margin: 'xs' };\n}\nfunction sep() { return { type: 'separator', margin: 'sm', color: '#eeeeee' }; }\nfunction buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor) {\n  const body = [\n    kv(cl.date, data.date + ' (' + data.weekday + ')'),\n    kv(cl.project, trunc(data.projectName, 50)),\n    kv(cl.area, trunc(data.constructionArea, 50)),\n    kv(cl.weather, cl.morning + ': ' + mWeather + '  ' + cl.afternoon + ': ' + aWeather),\n    kv(cl.workers, String(data.workers || '-')),\n    sep(),\n    lbl(cl.location), txt(trunc(data.constructionLocation, 150)),\n    sep(),\n    lbl(cl.workDone), txt(trunc(data.constructionItems, 200))\n  ];\n  if (data.tomorrowPlan) { body.push(sep()); body.push(lbl(cl.tomorrow)); body.push(txt(trunc(data.tomorrowPlan, 150))); }\n  if (data.materialsUsed || data.equipment) {\n    body.push(sep());\n    if (data.materialsUsed) body.push(kv(cl.materials, trunc(data.materialsUsed, 100)));\n    if (data.equipment) body.push(kv(cl.equipment, trunc(data.equipment, 100)));\n  }\n  if (data.communication) { body.push(sep()); body.push(lbl(cl.comms)); body.push(txt(trunc(data.communication, 150))); }\n  if (data.samplingTests) { body.push(sep()); body.push(lbl(cl.sampling)); body.push(txt(trunc(data.samplingTests, 150))); }\n  if (data.qualityInspection) { body.push(sep()); body.push(lbl(cl.quality)); body.push(txt(trunc(data.qualityInspection, 150))); }\n  if (data.otherNotes) { body.push(sep()); body.push(lbl(cl.notes)); body.push(txt(trunc(data.otherNotes, 150))); }\n  return {\n    type: 'bubble',\n    header: { type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '14px', contents: [{ type: 'text', text: cl.title, color: '#ffffff', weight: 'bold', size: 'md', wrap: true }, { type: 'text', text: String(data.contractor || ''), color: '#ffffffcc', size: 'xs', margin: 'xs' }] },\n    body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: body },\n    footer: { type: 'box', layout: 'vertical', paddingAll: '10px', contents: [{ type: 'button', style: 'primary', color: headerColor, height: 'sm', action: { type: 'uri', label: cl.download, uri: pdfUrl } }] }\n  };\n}\nconst contractorBubble = buildFlex(cl, d, mW, aW, driveUrl, '#1a73e8');\nconst jerryBubble = buildFlex(clZH, dZH, mWZH, aWZH, driveUrlZH, translationFailed ? '#e53e3e' : '#0d7a0d');\nconst contractorFlex = { to: d.lineUserId, messages: [{ type: 'flex', altText: cl.title, contents: contractorBubble }] };\nconst jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: clZH.title, contents: jerryBubble }] };\nfunction escHtml(s) { return String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\nconst JERRY_EMAIL = 'jerry_hsieh@eco-infinic.com';\nconst recipientEmail = (d.supervisorEmail || '').trim() || JERRY_EMAIL;\nconst isJerry = recipientEmail.toLowerCase() === JERRY_EMAIL.toLowerCase();\nconst emailSubject = `${translationFailed ? '⚠️翻譯失敗(原文) - ' : ''}監工日誌通知 - ${d.projectName || ''} - ${d.date || ''}`;\nconst emailHtml = `${translationFailed ? '<p style=\"color:#e53e3e;font-weight:bold\">⚠️ 自動翻譯失敗，本次中文版PDF內容為原文（非正式翻譯），請人工確認後再轉發。</p>' : ''}<p>負責工程師 <b>${escHtml(d.supervisor)}</b> 提交了新的監工日誌。</p><p>工程：${escHtml(d.projectName)}<br>廠區：${escHtml(d.constructionArea)}<br>日期：${escHtml(d.date)}（${escHtml(dZH.weekday)}）<br>廠商：${escHtml(d.contractor)}</p><p><a href=\"${driveUrlZH}\">📥 下載中文版 PDF 報告</a></p>`;\nreturn [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex), isJerry, recipientEmail, emailSubject, emailHtml } }];"
       },
       "id": "588ec57e-d260-462e-a8d1-32059b361c6b",
@@ -584,7 +515,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst translationFailed = genNode.geminiStatus !== 'success';\n\nconst variantOrigins = $('Split Out').all();\nconst driveUploads = $('Google Drive Upload').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveUrl = 'https://drive.google.com/file/d/' + driveUploads[idxOf('contractor')].json.id + '/view';\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveUploads[idxOf('zh')].json.id + '/view';\n\n// Related Work Item is now matched automatically server-side: Split Project\n// Names + Notion: Find Work Item look up each selected project by its exact\n// title (名稱) in the Work Items data source, no manual link column needed.\nconst workItemLookup = $('Aggregate Work Item IDs').first().json;\nconst relatedWorkItemIds = workItemLookup.relatedWorkItemIds || [];\nconst unmatchedCount = workItemLookup.unmatchedCount || 0;\n\nconst warnPrefix = translationFailed ? '⚠️ 自動翻譯失敗，以下為原文，請人工確認 / ' : '';\nconst unmatchedNote = unmatchedCount > 0\n  ? `⚠️ 有 ${unmatchedCount} 個工程在 Notion Work Items 裡找不到同名頁面，Related Work Item 未自動關聯，請確認工程名稱是否完全一致或手動補上。\\n\\n`\n  : '';\n\nconst progressDesc = unmatchedNote + [\n  `${warnPrefix}施工部位：${d.constructionLocation || '-'}`,\n  `出工人數：${d.workers || '-'}人`,\n  '',\n  '今日施工項目：',\n  dZH.constructionItems || d.constructionItems || '-',\n  '',\n  '明日預計工作：',\n  dZH.tomorrowPlan || d.tomorrowPlan || '-',\n  '',\n  `供給材料：${dZH.materialsUsed || d.materialsUsed || '-'}`,\n  `機具使用：${dZH.equipment || d.equipment || '-'}`,\n  '',\n  `📥 承包商版 PDF: ${driveUrl}`,\n  `📥 中文版 PDF: ${driveUrlZH}`\n].join('\\n');\n\nreturn [{\n  json: {\n    pageTitle: `${d.date} 監工日誌`,\n    logDate: d.date,\n    progressDesc,\n    issuesEncountered: `與廠商溝通協調記錄：${dZH.communication || d.communication || '無'}`,\n    solutionsApplied: `其他重要事項記錄：${dZH.otherNotes || d.otherNotes || '無'}`,\n    photoUrls: (d.photoUrls || []).join('\\n'),\n    relatedWorkItemIds\n  }\n}];\n"
+        "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst translationFailed = genNode.geminiStatus !== 'success';\n\nconst variantOrigins = $('Split Out').all();\nconst driveUploads = $('Google Drive Upload').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveUrl = 'https://drive.google.com/file/d/' + driveUploads[idxOf('contractor')].json.id + '/view';\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveUploads[idxOf('zh')].json.id + '/view';\n\n// notionProjectUrls comes from index.html, resolved client-side from the\n// Google Sheets \"Notion工程連結\" column for each selected project.\nconst rawUrls = Array.isArray(d.notionProjectUrls) ? d.notionProjectUrls : String(d.notionProjectUrls || '').split(',');\nconst toPageId = url => {\n  const m = String(url || '').match(/([0-9a-f]{32})(?:[?#]|$)/i);\n  if (!m) return null;\n  const h = m[1];\n  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;\n};\nconst relatedWorkItemIds = rawUrls.map(toPageId).filter(Boolean);\nconst unmatchedCount = rawUrls.filter(u => String(u || '').trim() && !toPageId(u)).length;\n\nconst warnPrefix = translationFailed ? '⚠️ 自動翻譯失敗，以下為原文，請人工確認 / ' : '';\nconst unmatchedNote = unmatchedCount > 0\n  ? `⚠️ 有 ${unmatchedCount} 個工程在 Google Sheets 裡尚未設定 Notion 連結，Related Work Item 未自動關聯，請手動補上。\\n\\n`\n  : '';\n\nconst progressDesc = unmatchedNote + [\n  `${warnPrefix}施工部位：${d.constructionLocation || '-'}`,\n  `出工人數：${d.workers || '-'}人`,\n  '',\n  '今日施工項目：',\n  dZH.constructionItems || d.constructionItems || '-',\n  '',\n  '明日預計工作：',\n  dZH.tomorrowPlan || d.tomorrowPlan || '-',\n  '',\n  `供給材料：${dZH.materialsUsed || d.materialsUsed || '-'}`,\n  `機具使用：${dZH.equipment || d.equipment || '-'}`,\n  '',\n  `📥 承包商版 PDF: ${driveUrl}`,\n  `📥 中文版 PDF: ${driveUrlZH}`\n].join('\\n');\n\nreturn [{\n  json: {\n    pageTitle: `${d.date} 監工日誌`,\n    logDate: d.date,\n    progressDesc,\n    issuesEncountered: `與廠商溝通協調記錄：${dZH.communication || d.communication || '無'}`,\n    solutionsApplied: `其他重要事項記錄：${dZH.otherNotes || d.otherNotes || '無'}`,\n    photoUrls: (d.photoUrls || []).join('\\n'),\n    relatedWorkItemIds\n  }\n}];\n"
       },
       "id": "5953655c-0969-4e7a-89ac-5a8ed56e9c37",
       "name": "Build Notion Payload1",
@@ -726,39 +657,6 @@
             "type": "main",
             "index": 0
           },
-          {
-            "node": "Split Project Names",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Split Project Names": {
-      "main": [
-        [
-          {
-            "node": "Notion: Find Work Item",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Notion: Find Work Item": {
-      "main": [
-        [
-          {
-            "node": "Aggregate Work Item IDs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Aggregate Work Item IDs": {
-      "main": [
-        [
           {
             "node": "Build Notion Payload1",
             "type": "main",

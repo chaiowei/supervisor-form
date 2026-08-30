@@ -2,10 +2,10 @@
 
 ## 2026-08-30（續）
 
-### Related Work Item 改為自動比對，不需手動維護 Notion 連結
-- 原設計預期在 Google Sheets 選項表額外維護一欄「工程名稱→Notion 連結」，但這段前端邏輯從未真正實作，導致 Related Work Item 永遠關聯不到；且這個做法本身也不理想——工程名稱本來就已經是表單既有欄位，不該還要人工重複維護一份連結對照表。
-- 改為 n8n 後端自動比對：新增 `Split Project Names` → `Notion: Find Work Item` → `Aggregate Work Item IDs` 三個節點，直接拿送出的工程名稱去 Notion 的 Work Items 資料庫依「名稱」精準比對，找到就自動填入 Related Work Item，完全不需要在 Sheets 或表單裡額外填寫任何連結。
-- 前提：Notion 裡的工程名稱要跟表單下拉選單裡的名稱完全一致（含全形/半形、空白），比對不到的話會照舊在 Progress Desc 開頭加提醒文字，需人工確認是否為名稱不一致或該工程尚未在 Notion 建立。
+### 修復 Related Work Item 一直沒有自動關聯的問題
+- 根本原因：n8n 後端一直預期 `index.html` 會從 Google Sheets 選項 CSV 的「Notion工程連結」欄位（第 6 欄），把每個選取工程對應的 Notion 頁面連結送進 `notionProjectUrls`，但前端這段邏輯其實從沒被實作過，所以這個欄位永遠是空的，Related Work Item 自然永遠關聯不到。
+- 修好了：`index.html` 現在會讀取 CSV 第 6 欄（工程名稱列的 Notion 連結），存成 `projectNotionUrlMap`，送出表單時依目前選取的工程組成 `notionProjectUrls` 陣列一起送出。
+- 提醒：Google Sheets 選項表要記得把每個「工程名稱」列的第 6 欄填上該工程在 Notion Work Items 資料庫裡的頁面連結，沒填的工程仍會照舊只顯示在 Progress Desc、不會自動關聯。
 
 ## 2026-08-30
 
@@ -17,7 +17,7 @@
 
 ### 監工日誌寫入 Notion
 - 每筆送出的監工日誌會自動寫入 Notion「Daily Work Logs」資料庫（`Progress Desc`／`Issues Encountered`／`Solutions Applied`／`Photo URLs`）。
-- 新增「Related Work Item」自動關聯：依表單送出的工程名稱，自動連到 Work Items 資料庫裡同名的工程頁面；比對不到時會在 Progress Desc 開頭加上提醒文字，需人工確認。
+- 新增「Related Work Item」自動關聯：依 Google Sheets「Notion工程連結」欄位，把日誌自動連到 Work Items 資料庫裡對應的工程頁面；若某工程尚未設定連結，會在 Progress Desc 開頭加上提醒文字，需手動補關聯。
 - 翻譯失敗時，Notion 記錄本身也會加上警示前綴，不只 LINE／email 才有提示。
 
 ### 工作流程檔案同步

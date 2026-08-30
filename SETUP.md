@@ -25,9 +25,7 @@ n8n Cloud Webhook
     │
     ├─► Generate PDF HTML → PDF.co → Google Drive Upload（承包商語言 + 中文雙版）
     │
-    ├─► Split Project Names → Notion: Find Work Item → Aggregate Work Item IDs — 依工程名稱在 Work Items 資料庫裡自動找到對應頁面
-    │
-    ├─► Build Notion Payload1 → Notion: Create Daily Log1 — 寫入 Daily Work Logs 資料庫，並透過 Related Work Item 關聯到上一步找到的工程頁面
+    ├─► Build Notion Payload1 → Notion: Create Daily Log1 — 寫入 Daily Work Logs 資料庫，並透過 Related Work Item 關聯到 Work Items 裡對應的工程頁面
     │
     ├─► LINE → Contractor — 推送原文報告給承包商
     │
@@ -45,7 +43,7 @@ n8n Cloud Webhook
 | n8n Webhook URL | ✅ 已設定 | https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report |
 | Notion 資料庫 | ✅ 已建立 | Daily Work Logs，Database ID: 2190dd6f-6b0a-80f0-81a4-fe071bce329f（注意：底層 Data Source/collection ID 是另一個 `2190dd6f-6b0a-803a-b151-000bc01c3b86`，兩者是 Notion 多資料源架構下分開的不同物件，別搞混） |
 | Notion DB 寫入工作流程 | ✅ 已設定 | Notion: Create Daily Log1 節點，`databaseId` 改用 **URL 模式**（`https://www.notion.so/2190dd6f6b0a80f081a4fe071bce329f`），避免手動填 ID 時誤填成 Data Source ID 導致 404 |
-| Notion Related Work Item 關聯 | ✅ 已串接 | 全自動、免手動維護連結：`Split Project Names` 把送出的工程名稱拆開 → `Notion: Find Work Item` 用 Notion API 依「名稱」(title) 精準比對 Work Items 資料庫（data source ID `2190dd6f-6b0a-80de-a93b-000bc5c1fc4e`）→ `Aggregate Work Item IDs` 收集比對到的頁面 ID → `Build Notion Payload1` 寫入 relation。**前提：Notion 裡的工程名稱要跟表單裡選的工程名稱完全一致**（包含全形/半形、空白），否則會比對不到，並在 Progress Desc 開頭出現提醒。 |
+| Notion Related Work Item 關聯 | ✅ 已串接 | 來源：選項 CSV **第 6 欄**（「工程名稱」列填該工程在 Notion Work Items 資料庫的頁面連結），由 index.html 讀取後依選取工程組成 `notionProjectUrls` 傳給後端，於 Build Notion Payload1 節點轉成 relation ID |
 | index.html Webhook URL | ✅ 已填入 | 已 push 到 GitHub |
 
 ---
