@@ -26,6 +26,7 @@ n8n Cloud Webhook
     ├─► Generate PDF HTML → PDF.co → Google Drive Upload（承包商語言 + 中文雙版）
     │
     ├─► Build Notion Payload1 → Notion: Create Daily Log1 — 寫入 Daily Work Logs 資料庫，並透過 Related Work Item 關聯到 Work Items 裡對應的工程頁面
+    │       └─► Build Photo Blocks → Notion: Append Photos — 把照片以圖片區塊附加到頁面內容（直接顯示，不只是連結文字）
     │
     ├─► LINE → Contractor — 推送原文報告給承包商
     │

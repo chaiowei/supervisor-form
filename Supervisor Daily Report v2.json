@@ -579,6 +579,62 @@
         }
       },
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Prepare Data').first().json;\nconst photoUrls = d.photoUrls || [];\nconst pageId = $json.id;\nif (!photoUrls.length) return [];\nconst children = photoUrls.map(url => ({\n  object: 'block',\n  type: 'image',\n  image: { type: 'external', external: { url } }\n}));\nreturn [{ json: { pageId, children } }];"
+      },
+      "id": "d58ffcd2-f90f-4f33-b437-f647d6f3cef3",
+      "name": "Build Photo Blocks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -19056,
+        1424
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://api.notion.com/v1/blocks/' + $json.pageId + '/children' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Notion-Version",
+              "value": "2025-09-03"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ children: $json.children }) }}",
+        "options": {}
+      },
+      "id": "4e83d48b-65b9-4726-9fa4-04a2140a51e6",
+      "name": "Notion: Append Photos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -18832,
+        1424
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "continueOnFail": true,
+      "credentials": {
+        "notionApi": {
+          "id": "3u39RvLZmB6m91JE",
+          "name": "Notion work"
+        }
+      }
     }
   ],
   "pinData": {
@@ -877,6 +933,28 @@
         [
           {
             "node": "Notion: Create Daily Log1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notion: Create Daily Log1": {
+      "main": [
+        [
+          {
+            "node": "Build Photo Blocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Photo Blocks": {
+      "main": [
+        [
+          {
+            "node": "Notion: Append Photos",
             "type": "main",
             "index": 0
           }
