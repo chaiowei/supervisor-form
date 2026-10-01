@@ -488,7 +488,6 @@
       <div class="screen-icon">✅</div>
       <div class="screen-title" id="successTitle">Submitted!</div>
       <div class="screen-msg" id="successMsg">Your report has been submitted. You will receive a confirmation via LINE shortly.</div>
-      <div class="screen-msg" id="successWarn" style="color:#e53e3e;margin-top:10px;display:none"></div>
     </div>
 
     <!-- Error -->
@@ -496,6 +495,7 @@
       <div class="screen-icon">❌</div>
       <div class="screen-title" id="errorTitle">Submission Failed</div>
       <div class="screen-msg" id="errorMsg">Please try again. If the problem persists, contact your supervisor.</div>
+      <div class="screen-msg" id="errorDetail" style="color:#e53e3e;margin-top:10px;display:none"></div>
       <button class="retry-btn" id="retryBtn" onclick="retryForm()">Try Again / ลองใหม่</button>
     </div>
   </div>
@@ -742,7 +742,7 @@ const T = {
     draftRestoreBtn: 'Restore Draft',
     draftDiscardBtn: 'Discard',
     optionsWarnMsg: '⚠️ Failed to load dropdown options (supervisor / project / contractor). Please check your connection or contact your supervisor.',
-    photoFailWarn: (n) => `⚠️ ${n} photo(s) failed to upload after retries. The rest of the report was submitted successfully without them.`,
+    photoFailBlock: (n, t) => `⚠️ ${n} of ${t} photo(s) failed to upload, so the report was NOT sent. Please check your connection and tap "Try Again" — photos already uploaded will not be uploaded again.`,
     msTitle: 'Select Project(s)',
     msCancelBtn: 'Cancel',
     msConfirmBtn: 'Confirm',
@@ -812,7 +812,7 @@ const T = {
     draftRestoreBtn: 'กู้คืนร่าง',
     draftDiscardBtn: 'ล้างข้อมูล',
     optionsWarnMsg: '⚠️ โหลดตัวเลือก (ผู้ควบคุมงาน/โครงการ/ผู้รับเหมา) ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือติดต่อผู้ควบคุมงาน',
-    photoFailWarn: (n) => `⚠️ อัปโหลดรูปไม่สำเร็จ ${n} รูป (หลังจากลองใหม่แล้ว) รายงานส่วนที่เหลือถูกส่งเรียบร้อยแล้วโดยไม่มีรูปเหล่านี้`,
+    photoFailBlock: (n, t) => `⚠️ อัปโหลดรูปไม่สำเร็จ ${n} จาก ${t} รูป รายงานยังไม่ได้ถูกส่ง กรุณาตรวจสอบอินเทอร์เน็ตแล้วกด "ลองใหม่" (รูปที่อัปโหลดสำเร็จแล้วจะไม่ถูกอัปโหลดซ้ำ)`,
     msTitle: 'เลือกโครงการ',
     msCancelBtn: 'ยกเลิก',
     msConfirmBtn: 'ยืนยัน',
@@ -882,7 +882,7 @@ const T = {
     draftRestoreBtn: '恢復草稿',
     draftDiscardBtn: '清除草稿',
     optionsWarnMsg: '⚠️ 選項載入失敗（負責工程師/工程名稱/施工廠商），請確認網路連線或聯絡管理員',
-    photoFailWarn: (n) => `⚠️ 有 ${n} 張照片重試後仍上傳失敗，其餘報告內容已成功送出（不含這些照片）。`,
+    photoFailBlock: (n, t) => `⚠️ ${t} 張照片中有 ${n} 張上傳失敗，報告尚未送出。請確認網路後按「重新送出」（已上傳成功的照片不會重複上傳）。`,
     msTitle: '選擇工程名稱',
     msCancelBtn: '取消',
     msConfirmBtn: '確認',
@@ -1246,12 +1246,18 @@ document.getElementById('theForm').addEventListener('submit', e => {
 // Upload one photo, retrying on failure (network flakiness on site is the
 // common case). Returns { ok, url } or { ok:false, error } — never throws,
 // so one bad photo can't take down the rest of the submission.
+// Successful uploads are cached per File so that after a failed submission,
+// "Try Again" only re-uploads the photos that didn't make it.
+const uploadedUrlCache = new WeakMap();
+
 async function uploadPhotoWithRetry(file, maxRetries = 2) {
+  if (uploadedUrlCache.has(file)) return { ok: true, url: uploadedUrlCache.get(file) };
   let lastErr;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const b64 = await compressPhoto(file);
       const url = await uploadPhoto(b64);
+      uploadedUrlCache.set(file, url);
       return { ok: true, url };
     } catch (e) {
       lastErr = e;
@@ -1299,6 +1305,7 @@ async function proceedSubmit() {
 
   let processInterval = null;
   let failedPhotoCount = 0;
+  document.getElementById('errorDetail').style.display = 'none';
   try {
     // Step 1: upload photos in parallel with retry — real, count-based progress
     const hasPhotos = photoFiles.length > 0;
@@ -1315,8 +1322,16 @@ async function proceedSubmit() {
     }
     setStep('photos', failedPhotoCount ? 'error' : 'done',
       hasPhotos ? `${photoUrls.length}/${photoFiles.length}` : t.noPhotos);
+    // Every photo must be uploaded before the report is generated — a report
+    // silently missing site photos is worse than asking the user to retry.
+    if (failedPhotoCount > 0) {
+      const detail = document.getElementById('errorDetail');
+      detail.textContent = t.photoFailBlock(failedPhotoCount, photoFiles.length);
+      detail.style.display = 'block';
+      throw new Error(`${failedPhotoCount} photo upload(s) failed`);
+    }
 
-    // Step 2: dispatch to server (submission proceeds even if some photos failed)
+    // Step 2: dispatch to server
     setStep('submit', 'active');
     const payload = {
       ...raw,
@@ -1358,18 +1373,11 @@ async function proceedSubmit() {
     setProgress(100);
 
     clearDraft();
-    const warnEl = document.getElementById('successWarn');
-    if (failedPhotoCount > 0) {
-      warnEl.textContent = t.photoFailWarn(failedPhotoCount);
-      warnEl.style.display = 'block';
-    } else {
-      warnEl.style.display = 'none';
-    }
     setTimeout(() => showScreen('successScreen'), 400);
   } catch (err) {
     console.error('Submit error:', err);
     if (processInterval) clearInterval(processInterval);
-    setStep('process', 'error');
+    if (!failedPhotoCount) setStep('process', 'error');
     setProgressError();
     setTimeout(() => showScreen('errorScreen'), 600);
     btn.disabled = false;
