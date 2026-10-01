@@ -495,7 +495,7 @@
       <div class="screen-icon">❌</div>
       <div class="screen-title" id="errorTitle">Submission Failed</div>
       <div class="screen-msg" id="errorMsg">Please try again. If the problem persists, contact your supervisor.</div>
-      <div class="screen-msg" id="errorDetail" style="color:#e53e3e;margin-top:10px;display:none"></div>
+      <div class="screen-msg" id="errorDetail" style="color:#e53e3e;margin-top:10px;display:none;white-space:pre-line"></div>
       <button class="retry-btn" id="retryBtn" style="width:100%" onclick="retryForm()">Resubmit</button>
       <button type="button" class="retry-btn" id="errorBackBtn" style="width:100%;margin-top:10px;background:#eee;color:#333" onclick="showScreen('theForm')">Back to Edit</button>
     </div>
@@ -1006,29 +1006,33 @@ function applyLang() {
 function addPhotos(input) {
   const files = Array.from(input.files);
   const slots = CFG.MAX_PHOTOS - photoFiles.length;
-  files.slice(0, slots).forEach((f, i) => {
-    const idx = photoFiles.length;
+  files.slice(0, slots).forEach(f => {
     photoFiles.push(f);
-    showThumb(f, idx);
+    showThumb(f, photoFiles.length - 1);
   });
   input.value = '';
 }
 
+// Thumbnails use object URLs (not base64 data URLs of the full-size original):
+// 10 phone photos as data URLs ate enough memory in the LINE webview to make
+// later canvas compression fail. Object URLs are also synchronous, so thumbs
+// stay in the same order as photoFiles and delete removes the right photo.
 function showThumb(file, idx) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    const d = document.createElement('div');
-    d.className = 'thumb'; d.id = 'th-' + idx;
-    d.innerHTML = `<img src="${e.target.result}"><button type="button" class="del" onclick="removePhoto(${idx})">✕</button>`;
-    document.getElementById('photoGrid').appendChild(d);
-  };
-  reader.readAsDataURL(file);
+  const d = document.createElement('div');
+  d.className = 'thumb'; d.id = 'th-' + idx;
+  const img = document.createElement('img');
+  img.src = URL.createObjectURL(file);
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'del'; del.textContent = '✕';
+  del.setAttribute('onclick', `removePhoto(${idx})`);
+  d.append(img, del);
+  document.getElementById('photoGrid').appendChild(d);
 }
 
 function removePhoto(idx) {
   photoFiles.splice(idx, 1);
   const el = document.getElementById('th-' + idx);
-  if (el) el.remove();
+  if (el) { URL.revokeObjectURL(el.querySelector('img').src); el.remove(); }
   // Re-index
   document.querySelectorAll('.thumb').forEach((el, i) => {
     el.id = 'th-' + i;
@@ -1036,38 +1040,53 @@ function removePhoto(idx) {
   });
 }
 
-async function compressPhoto(file) {
-  return new Promise(res => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        let { width: w, height: h } = img;
-        const M = CFG.PHOTO_MAX_PX;
-        if (w > M || h > M) {
-          if (w >= h) { h = Math.round(h * M / w); w = M; }
-          else { w = Math.round(w * M / h); h = M; }
-        }
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
-        res(c.toDataURL('image/jpeg', CFG.PHOTO_QUALITY).split(',')[1]);
-      };
-      img.src = e.target.result;
+function compressPhoto(file) {
+  return new Promise((res, rej) => {
+    const src = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      const M = CFG.PHOTO_MAX_PX;
+      if (w > M || h > M) {
+        if (w >= h) { h = Math.round(h * M / w); w = M; }
+        else { w = Math.round(w * M / h); h = M; }
+      }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      const b64 = c.toDataURL('image/jpeg', CFG.PHOTO_QUALITY).split(',')[1];
+      c.width = c.height = 0; // free the canvas bitmap right away
+      URL.revokeObjectURL(src);
+      // A canvas the webview couldn't allocate encodes to "data:," — catch it
+      // here instead of sending imgBB an empty image.
+      if (!b64) rej(new Error('compress failed (out of memory?)'));
+      else res(b64);
     };
-    reader.readAsDataURL(file);
+    img.onerror = () => { URL.revokeObjectURL(src); rej(new Error('cannot read image file')); };
+    img.src = src;
   });
 }
 
 async function uploadPhoto(b64) {
   const fd = new FormData();
   fd.append('image', b64);
-  const r = await fetch(`https://api.imgbb.com/1/upload?key=${CFG.IMGBB_API_KEY}`, {
-    method: 'POST', body: fd
-  });
-  const j = await r.json();
-  if (!j.success) throw new Error('imgBB upload failed: ' + j.error?.message);
-  return j.data.url;
+  // Without a timeout a stalled connection on site hangs forever instead of
+  // failing into the retry loop.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60000);
+  try {
+    const r = await fetch(`https://api.imgbb.com/1/upload?key=${CFG.IMGBB_API_KEY}`, {
+      method: 'POST', body: fd, signal: ctrl.signal
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.success) throw new Error(`imgBB HTTP ${r.status}: ${j.error?.message || 'no response body'}`);
+    return j.data.url;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('upload timed out (60s)');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ── Validation ────────────────────────────────────────────
@@ -1255,7 +1274,7 @@ document.getElementById('theForm').addEventListener('submit', e => {
 // "Try Again" only re-uploads the photos that didn't make it.
 const uploadedUrlCache = new WeakMap();
 
-async function uploadPhotoWithRetry(file, maxRetries = 2) {
+async function uploadPhotoWithRetry(file, maxRetries = 3) {
   if (uploadedUrlCache.has(file)) return { ok: true, url: uploadedUrlCache.get(file) };
   let lastErr;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -1266,7 +1285,8 @@ async function uploadPhotoWithRetry(file, maxRetries = 2) {
       return { ok: true, url };
     } catch (e) {
       lastErr = e;
-      if (attempt < maxRetries) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+      // 2s, 4s, 8s — long enough to ride out a short signal drop on site
+      if (attempt < maxRetries) await new Promise(r => setTimeout(r, 2000 * 2 ** attempt));
     }
   }
   return { ok: false, error: lastErr };
@@ -1291,11 +1311,13 @@ async function uploadAllPhotos(files, onProgress) {
   return results;
 }
 
-let lastPhotoFail = null; // { failed, total } of the last attempt, for the error screen
+let lastPhotoFail = null; // { failed, total, reason } of the last attempt, for the error screen
 
 function renderErrorDetail() {
   const el = document.getElementById('errorDetail');
-  el.textContent = lastPhotoFail ? T[lang].photoFailBlock(lastPhotoFail.failed, lastPhotoFail.total) : '';
+  el.textContent = lastPhotoFail
+    ? T[lang].photoFailBlock(lastPhotoFail.failed, lastPhotoFail.total) + (lastPhotoFail.reason ? `\n(${lastPhotoFail.reason})` : '')
+    : '';
   el.style.display = lastPhotoFail ? 'block' : 'none';
 }
 
@@ -1318,6 +1340,7 @@ async function proceedSubmit() {
 
   let processInterval = null;
   let failedPhotoCount = 0;
+  let firstPhotoError = '';
   lastPhotoFail = null;
   renderErrorDetail();
   try {
@@ -1333,13 +1356,14 @@ async function proceedSubmit() {
       });
       photoUrls = results.filter(r => r.ok).map(r => r.url);
       failedPhotoCount = results.filter(r => !r.ok).length;
+      firstPhotoError = String(results.find(r => !r.ok)?.error?.message || '');
     }
     setStep('photos', failedPhotoCount ? 'error' : 'done',
       hasPhotos ? `${photoUrls.length}/${photoFiles.length}` : t.noPhotos);
     // Every photo must be uploaded before the report is generated — a report
     // silently missing site photos is worse than asking the user to retry.
     if (failedPhotoCount > 0) {
-      lastPhotoFail = { failed: failedPhotoCount, total: photoFiles.length };
+      lastPhotoFail = { failed: failedPhotoCount, total: photoFiles.length, reason: firstPhotoError };
       renderErrorDetail();
       throw new Error(`${failedPhotoCount} photo upload(s) failed`);
     }
