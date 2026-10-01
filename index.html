@@ -496,7 +496,8 @@
       <div class="screen-title" id="errorTitle">Submission Failed</div>
       <div class="screen-msg" id="errorMsg">Please try again. If the problem persists, contact your supervisor.</div>
       <div class="screen-msg" id="errorDetail" style="color:#e53e3e;margin-top:10px;display:none"></div>
-      <button class="retry-btn" id="retryBtn" onclick="retryForm()">Try Again / ลองใหม่</button>
+      <button class="retry-btn" id="retryBtn" style="width:100%" onclick="retryForm()">Resubmit</button>
+      <button type="button" class="retry-btn" id="errorBackBtn" style="width:100%;margin-top:10px;background:#eee;color:#333" onclick="showScreen('theForm')">Back to Edit</button>
     </div>
   </div>
 </div>
@@ -720,7 +721,8 @@ const T = {
     successMsg: 'Your daily report has been submitted. You will receive a confirmation via LINE shortly.',
     errorTitle: 'Submission Failed',
     errorMsg: 'Please try again. If the problem persists, contact your supervisor.',
-    retryBtn: 'Try Again',
+    retryBtn: 'Resubmit',
+    errorBackBtn: 'Back to Edit',
     uploading: (n, t) => `Uploading photo ${n}/${t}...`,
     submitting: 'Submitting...',
     langBtn: 'TH',
@@ -742,7 +744,7 @@ const T = {
     draftRestoreBtn: 'Restore Draft',
     draftDiscardBtn: 'Discard',
     optionsWarnMsg: '⚠️ Failed to load dropdown options (supervisor / project / contractor). Please check your connection or contact your supervisor.',
-    photoFailBlock: (n, t) => `⚠️ ${n} of ${t} photo(s) failed to upload, so the report was NOT sent. Please check your connection and tap "Try Again" — photos already uploaded will not be uploaded again.`,
+    photoFailBlock: (n, t) => `⚠️ ${n} of ${t} photo(s) failed to upload, so the report was NOT sent. Please check your connection and tap "Resubmit" — photos already uploaded will not be uploaded again.`,
     msTitle: 'Select Project(s)',
     msCancelBtn: 'Cancel',
     msConfirmBtn: 'Confirm',
@@ -790,7 +792,8 @@ const T = {
     successMsg: 'รายงานประจำวันของคุณถูกส่งเรียบร้อยแล้ว คุณจะได้รับสำเนาทาง LINE ในไม่ช้า',
     errorTitle: 'ส่งไม่สำเร็จ',
     errorMsg: 'กรุณาลองใหม่อีกครั้ง หากยังมีปัญหา กรุณาติดต่อผู้ควบคุมงาน',
-    retryBtn: 'ลองใหม่',
+    retryBtn: 'ส่งใหม่อีกครั้ง',
+    errorBackBtn: 'กลับไปแก้ไข',
     uploading: (n, t) => `กำลังอัปโหลดรูป ${n}/${t}...`,
     submitting: 'กำลังส่ง...',
     langBtn: '中文',
@@ -812,7 +815,7 @@ const T = {
     draftRestoreBtn: 'กู้คืนร่าง',
     draftDiscardBtn: 'ล้างข้อมูล',
     optionsWarnMsg: '⚠️ โหลดตัวเลือก (ผู้ควบคุมงาน/โครงการ/ผู้รับเหมา) ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือติดต่อผู้ควบคุมงาน',
-    photoFailBlock: (n, t) => `⚠️ อัปโหลดรูปไม่สำเร็จ ${n} จาก ${t} รูป รายงานยังไม่ได้ถูกส่ง กรุณาตรวจสอบอินเทอร์เน็ตแล้วกด "ลองใหม่" (รูปที่อัปโหลดสำเร็จแล้วจะไม่ถูกอัปโหลดซ้ำ)`,
+    photoFailBlock: (n, t) => `⚠️ อัปโหลดรูปไม่สำเร็จ ${n} จาก ${t} รูป รายงานยังไม่ได้ถูกส่ง กรุณาตรวจสอบอินเทอร์เน็ตแล้วกด "ส่งใหม่อีกครั้ง" (รูปที่อัปโหลดสำเร็จแล้วจะไม่ถูกอัปโหลดซ้ำ)`,
     msTitle: 'เลือกโครงการ',
     msCancelBtn: 'ยกเลิก',
     msConfirmBtn: 'ยืนยัน',
@@ -861,6 +864,7 @@ const T = {
     errorTitle: '送出失敗',
     errorMsg: '請重試。若問題持續發生，請聯絡負責工程師。',
     retryBtn: '重新送出',
+    errorBackBtn: '返回修改',
     uploading: (n, t) => `正在上傳照片 ${n}/${t}...`,
     submitting: '送出中...',
     langBtn: 'EN',
@@ -973,7 +977,7 @@ function applyLang() {
     'l-materialsUsed','l-equipment','l-communication','l-otherNotes',
     'l-samplingTests','l-qualityInspection','l-photoLabel',
     'opt-sel','w-sunny-1','w-rainy-1','w-sunny-2','w-rainy-2',
-    'submitLabel','successTitle','successMsg','errorTitle','errorMsg','retryBtn','langBtn',
+    'submitLabel','successTitle','successMsg','errorTitle','errorMsg','retryBtn','errorBackBtn','langBtn',
     'progressTitle','step-photos-label','step-submit-label','step-process-label',
     'confirmTitleLbl','confirmSendBtn','confirmBackBtn',
     'msTitle','msCancelBtn','msConfirmBtn'
@@ -988,6 +992,7 @@ function applyLang() {
   // Top banners set their text once when shown, so re-render them here or
   // they stay in whichever language was active at that moment.
   if (pendingDraft && document.getElementById('draftBanner').style.display !== 'none') renderDraftBanner();
+  if (lastPhotoFail) renderErrorDetail();
   const optWarn = document.getElementById('optionsWarn');
   if (optWarn && optWarn.style.display !== 'none') optWarn.textContent = t.optionsWarnMsg;
   // Placeholders
@@ -1286,6 +1291,14 @@ async function uploadAllPhotos(files, onProgress) {
   return results;
 }
 
+let lastPhotoFail = null; // { failed, total } of the last attempt, for the error screen
+
+function renderErrorDetail() {
+  const el = document.getElementById('errorDetail');
+  el.textContent = lastPhotoFail ? T[lang].photoFailBlock(lastPhotoFail.failed, lastPhotoFail.total) : '';
+  el.style.display = lastPhotoFail ? 'block' : 'none';
+}
+
 async function proceedSubmit() {
   const raw = pendingRaw;
   if (!raw) return;
@@ -1305,7 +1318,8 @@ async function proceedSubmit() {
 
   let processInterval = null;
   let failedPhotoCount = 0;
-  document.getElementById('errorDetail').style.display = 'none';
+  lastPhotoFail = null;
+  renderErrorDetail();
   try {
     // Step 1: upload photos in parallel with retry — real, count-based progress
     const hasPhotos = photoFiles.length > 0;
@@ -1325,9 +1339,8 @@ async function proceedSubmit() {
     // Every photo must be uploaded before the report is generated — a report
     // silently missing site photos is worse than asking the user to retry.
     if (failedPhotoCount > 0) {
-      const detail = document.getElementById('errorDetail');
-      detail.textContent = t.photoFailBlock(failedPhotoCount, photoFiles.length);
-      detail.style.display = 'block';
+      lastPhotoFail = { failed: failedPhotoCount, total: photoFiles.length };
+      renderErrorDetail();
       throw new Error(`${failedPhotoCount} photo upload(s) failed`);
     }
 
@@ -1395,9 +1408,9 @@ function showScreen(id) {
 }
 
 function retryForm() {
-  // Data was already validated once; send the user back to the confirm
-  // screen (not the whole form) so a network hiccup doesn't force a full re-fill.
-  if (pendingRaw) showConfirmScreen(pendingRaw);
+  // Data was already validated and confirmed once, so resubmit straight away —
+  // already-uploaded photos are cached, only the failed ones are re-sent.
+  if (pendingRaw) proceedSubmit();
   else showScreen('theForm');
 }
 </script>
