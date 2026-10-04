@@ -1,0 +1,118 @@
+{
+  "name": "Migrate imgBB Photos to Drive (one-time)",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Run Once (Manual)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One-time migration: every imgBB photo referenced in Notion \"Daily Work Logs\"\n// (2026-08-30 ~ 2026-10-04), named by log date.\nconst photos = [\n {\n  \"url\": \"https://i.ibb.co/SwjhXsYq/6d4a57c08c73.jpg\",\n  \"name\": \"2026-08-30_01.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/s986WQH9/315d2cd5ac46.jpg\",\n  \"name\": \"2026-08-30_02.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/GfJqcG2s/90cea1e26c12.jpg\",\n  \"name\": \"2026-08-30_03.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/8RCpW0C/749553ff0682.jpg\",\n  \"name\": \"2026-08-30_04.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/PG7DwzyQ/dfb3cd0e729f.jpg\",\n  \"name\": \"2026-08-30_05.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Y4v8R19S/21dfd695aa07.jpg\",\n  \"name\": \"2026-08-30_06.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/W43V4C7f/b24502fc5b2c.jpg\",\n  \"name\": \"2026-08-30_07.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/mjRRNct/cba5aebc7fde.jpg\",\n  \"name\": \"2026-08-30_08.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/sMW5MNp/25013b59e1d0.jpg\",\n  \"name\": \"2026-08-30_09.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/fdGwhCbt/6933ff0e126d.jpg\",\n  \"name\": \"2026-08-30_10.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/kVxSGnZq/733c23b5ccf0.jpg\",\n  \"name\": \"2026-08-31_01.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/cXkQw8hY/61d4b53cf9d5.jpg\",\n  \"name\": \"2026-08-31_02.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/SwWK5TrY/53776522d224.jpg\",\n  \"name\": \"2026-08-31_03.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/7JKqyB8y/00b66fec3585.jpg\",\n  \"name\": \"2026-08-31_04.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/VcB0v3x2/dad3b9eb8220.jpg\",\n  \"name\": \"2026-08-31_05.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/21qBBYR8/d002706be10b.jpg\",\n  \"name\": \"2026-08-31_06.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/hxLxg6Vr/1025f87ad852.jpg\",\n  \"name\": \"2026-08-31_07.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/GKqdd0m/69c89687d534.jpg\",\n  \"name\": \"2026-08-31_08.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/fzXHVTHg/d44eea95bc1d.jpg\",\n  \"name\": \"2026-09-02_01.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/VG0T586/ad56316829eb.jpg\",\n  \"name\": \"2026-09-02_02.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/rf6zJQ7W/a17a958e09ec.jpg\",\n  \"name\": \"2026-09-02_03.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Txjn5Jf3/91978d123d26.jpg\",\n  \"name\": \"2026-09-02_04.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/5gYbKLWZ/cc81ef00adaa.jpg\",\n  \"name\": \"2026-09-02_05.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/mCPH09Fw/ba46a68c81ba.jpg\",\n  \"name\": \"2026-09-02_06.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/nMQGQJFG/2dee1797eed4.jpg\",\n  \"name\": \"2026-09-02_07.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Kpd2JJzt/b14454bb8120.jpg\",\n  \"name\": \"2026-09-02_08.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/BVb7gsyQ/29aa0cc70c52.jpg\",\n  \"name\": \"2026-09-03_01.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/FLfWh6xr/11985b37b8cc.jpg\",\n  \"name\": \"2026-09-03_02.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/jkt5MzTP/6ab0b1da112a.jpg\",\n  \"name\": \"2026-09-03_03.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/nMswrvqz/2e48cfa1a1b2.jpg\",\n  \"name\": \"2026-09-03_04.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/LDwxsW0p/960759362415.jpg\",\n  \"name\": \"2026-09-03_05.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/8DR4Rryn/173cb521b417.jpg\",\n  \"name\": \"2026-09-03_06.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/jvrx4D5w/0432504b7f87.jpg\",\n  \"name\": \"2026-09-03_07.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Mx9b7BWR/2ee5cbd2a38e.jpg\",\n  \"name\": \"2026-09-03_08.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/BdWQQHy/01d8bb1e466e.jpg\",\n  \"name\": \"2026-09-03_09.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/hRFCqQhD/da077cd17fbc.jpg\",\n  \"name\": \"2026-09-06_01.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/HTBfSmxf/c854e571fde9.jpg\",\n  \"name\": \"2026-09-06_02.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/xqw7rTvv/5368f7172fe6.jpg\",\n  \"name\": \"2026-09-06_03.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/mVDWc2fR/85c591d76050.jpg\",\n  \"name\": \"2026-09-09_01.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/ZRmCmNkH/f676a82ce28a.jpg\",\n  \"name\": \"2026-09-09_02.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/PGfH9tZh/733624697c6f.jpg\",\n  \"name\": \"2026-09-09_03.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/cjfjvGY/3bcf8bf51fff.jpg\",\n  \"name\": \"2026-09-09_04.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/GD0tPjC/1e02074f855b.jpg\",\n  \"name\": \"2026-09-09_05.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/SX6tWq5s/01d7c0303122.jpg\",\n  \"name\": \"2026-09-09_06.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/5gb2MtpD/7827afcd68b1.jpg\",\n  \"name\": \"2026-09-09_07.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/60CG8SZP/e8f5fa56b634.jpg\",\n  \"name\": \"2026-09-09_08.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/XmR4wBN/1088c2e9884a.jpg\",\n  \"name\": \"2026-09-09_09.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/N6FCS5dp/b559a942523c.jpg\",\n  \"name\": \"2026-09-09_10.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/wNfhV1Tw/699fbfc285d1.jpg\",\n  \"name\": \"2026-09-10_01.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/WvwsV154/85864cfc5078.jpg\",\n  \"name\": \"2026-09-10_02.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/1tqXR9vh/a5aacfdda303.jpg\",\n  \"name\": \"2026-09-10_03.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Wv81KwZh/e2560660bd00.jpg\",\n  \"name\": \"2026-09-10_04.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/B24vnvKW/22f1eb0077b1.jpg\",\n  \"name\": \"2026-09-10_05.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Z6NVTLDB/30c6d50309fe.jpg\",\n  \"name\": \"2026-09-10_06.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/yrnn3BD/d0a973fc1aac.jpg\",\n  \"name\": \"2026-09-10_07.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/N2P8XWJQ/4b8b9b2bfce9.jpg\",\n  \"name\": \"2026-09-10_08.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/TBHdrzQh/f641b3dc85cb.jpg\",\n  \"name\": \"2026-09-10_09.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/WNFVnY1f/6b153822632d.jpg\",\n  \"name\": \"2026-09-10_10.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Y7QPM9r7/eb44b1eb5c16.jpg\",\n  \"name\": \"2026-09-11_01.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/F4HbNrQ2/6fd65a9c7195.jpg\",\n  \"name\": \"2026-09-11_02.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Y721b5cT/c41f49280652.jpg\",\n  \"name\": \"2026-09-11_03.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/kVMs2ZJ2/eeed43e99202.jpg\",\n  \"name\": \"2026-09-11_04.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/LdTDDZgG/138529c3a5d5.jpg\",\n  \"name\": \"2026-09-11_05.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Fbtnrnjr/618eb49fa41d.jpg\",\n  \"name\": \"2026-09-11_06.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Xfk8JGV0/8a7e8d42202d.jpg\",\n  \"name\": \"2026-09-11_07.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/S7GscjrX/b6d2475b70f8.jpg\",\n  \"name\": \"2026-09-11_08.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/8LB9VZ7Z/1edd99442db0.jpg\",\n  \"name\": \"2026-10-01_01.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/fzbg1sZQ/20b697e98548.jpg\",\n  \"name\": \"2026-10-01_02.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Fjb6d1m/f39a0db026f5.jpg\",\n  \"name\": \"2026-10-01_03.jpg\"\n },\n {\n  \"url\": \"https://i.ibb.co/Z6DYJGgB/cef5fedaa5d5.jpg\",\n  \"name\": \"2026-10-04_01.jpg\"\n }\n];\nreturn photos.map(p => ({ json: p }));"
+      },
+      "name": "Photo List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "Download from imgBB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Photo List').item.json.name }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1wcJmQkM_lSpZW5Nw-1TPZ51Dq-BP1D37",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "name": "Save to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "tHegGlDXg7LOneTk",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run Once (Manual)": {
+      "main": [
+        [
+          {
+            "node": "Photo List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Photo List": {
+      "main": [
+        [
+          {
+            "node": "Download from imgBB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download from imgBB": {
+      "main": [
+        [
+          {
+            "node": "Save to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
