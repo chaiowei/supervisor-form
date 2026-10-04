@@ -1,0 +1,162 @@
+{
+  "name": "Supervisor Photo Upload",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "supervisor-photo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook (Photo)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "ea5b6f93-4895-4de5-9895-7102406ca773"
+    },
+    {
+      "parameters": {
+        "jsCode": "// The form sends one compressed JPEG per request as base64 (same shape it\n// used to send imgBB), plus a suggested file name.\nconst body = $input.first().json.body || $input.first().json;\nconst b64 = String(body.image || '');\nif (!b64) throw new Error('no image in request');\nconst safe = s => String(s || '').replace(/[\\\\/:*?\"<>|]/g, '_').slice(0, 80);\nconst fileName = safe(body.fileName) || `photo_${Date.now()}.jpg`;\nconst binary = await this.helpers.prepareBinaryData(Buffer.from(b64, 'base64'), fileName, 'image/jpeg');\nreturn [{ json: { fileName }, binary: { data: binary } }];"
+      },
+      "name": "Decode Photo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.fileName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1wcJmQkM_lSpZW5Nw-1TPZ51Dq-BP1D37",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "name": "Drive: Upload Photo",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        440,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "tHegGlDXg7LOneTk",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://www.googleapis.com/drive/v3/files/' + $json.id + '/permissions' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { type: 'anyone', role: 'reader' } }}",
+        "options": {}
+      },
+      "name": "Drive: Share Photo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "tHegGlDXg7LOneTk",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { id: $('Drive: Upload Photo').item.json.id, url: 'https://lh3.googleusercontent.com/d/' + $('Drive: Upload Photo').item.json.id, viewUrl: 'https://drive.google.com/file/d/' + $('Drive: Upload Photo').item.json.id + '/view' } }) }}",
+        "options": {}
+      },
+      "name": "Respond URL",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Photo)": {
+      "main": [
+        [
+          {
+            "node": "Decode Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decode Photo": {
+      "main": [
+        [
+          {
+            "node": "Drive: Upload Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Upload Photo": {
+      "main": [
+        [
+          {
+            "node": "Drive: Share Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Share Photo": {
+      "main": [
+        [
+          {
+            "node": "Respond URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "LhO1L9YtYPahglea"
+  }
+}

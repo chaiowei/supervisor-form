@@ -13,8 +13,9 @@
     ▼
 LIFF 雙語表單 (GitHub Pages)
     │  填寫完成後：
-    │  1. 照片壓縮後上傳 imgBB → 取得 URL
-    │  2. 表單資料 + 照片 URLs POST 到 n8n Webhook
+    │  1. 照片壓縮後逐張 POST 到 n8n「Supervisor Photo Upload」
+    │     → 存進 Google Drive、開放「知道連結者可檢視」→ 回傳圖片 URL
+    │  2. 照片全部上傳成功後，表單資料 + 照片 URLs POST 到 n8n Webhook
     │
     ▼
 n8n Cloud Webhook
@@ -116,16 +117,21 @@ n8n Cloud Webhook
 
 ---
 
-### 步驟 3：imgBB — 取得 API Key
+### 步驟 3：匯入照片上傳工作流程（Google Drive）
 
-前往：https://api.imgbb.com/
+照片不再使用 imgBB，改由 n8n 存進 Google Drive。
 
-1. 登入帳號
-2. 取得 API Key
+1. n8n → **Add workflow** → **Import from file** → 選 `Supervisor Photo Upload.json`
+2. 確認 **Drive: Upload Photo**、**Drive: Share Photo** 兩個節點的憑證都是 **Google Drive account**
+3. （建議）在 Google Drive 建一個「監工日誌照片」資料夾，把資料夾 ID 填到 **Drive: Upload Photo** 的 Folder（預設和 PDF 放同一個資料夾）
+4. 右上角切換為 **Active**
+5. Webhook 網址為 `https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-photo`（已寫在 index.html 的 `PHOTO_UPLOAD_URL`）
+
+> ⚠️ 照片上傳依賴 Google Drive 授權。授權過期時照片會全部上傳失敗、報告無法送出，請務必把 Google Cloud OAuth 應用程式發布為「正式版」，避免每 7 天過期。
 
 ---
 
-### 步驟 4：更新 index.html（取得 LIFF ID 和 imgBB Key 後）
+### 步驟 4：更新 index.html（取得 LIFF ID 後）
 
 編輯 `index.html` 第 340-344 行的 CFG 區塊：
 
@@ -133,7 +139,7 @@ n8n Cloud Webhook
 const CFG = {
   LIFF_ID:          '填入你的 LIFF ID',
   N8N_WEBHOOK_URL:  'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report',  // 已填
-  IMGBB_API_KEY:    '填入你的 imgBB API Key',
+  PHOTO_UPLOAD_URL: 'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-photo',
   MAX_PHOTOS: 10,
   PHOTO_MAX_PX: 1280,
   PHOTO_QUALITY: 0.70,
@@ -143,7 +149,7 @@ const CFG = {
 然後 push 到 GitHub：
 ```bash
 git add index.html
-git commit -m "config: fill LIFF ID and imgBB API key"
+git commit -m "config: fill LIFF ID"
 git push
 ```
 
