@@ -1,5 +1,13 @@
 # 更新紀錄
 
+## 2026-10-04
+
+### 照片改存 Google Drive（停用 imgBB）
+- 新增 n8n 工作流程 `Supervisor Photo Upload`（webhook `supervisor-photo`）：表單逐張把壓縮後的照片送過來，存進 Google Drive、設定「知道連結者可檢視」，回傳可直接顯示的圖片網址（`lh3.googleusercontent.com/d/<檔案ID>`）。
+- 表單改送到這個 webhook，不再使用 imgBB；imgBB API Key 也從網頁原始碼移除。
+- 檔名格式 `日期_廠商_時分秒_序號.jpg`，同一份報告的照片會排在一起；重新送出時檔名不變。
+- 主流程（PDF、Notion、LINE）不需修改，照片網址格式與之前相容。
+
 ## 2026-10-02
 
 ### 照片全部上傳成功才會產生報告
