@@ -90,11 +90,20 @@ function buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor, notionLink
 const contractorBubble = buildFlex(cl, d, mW, aW, driveUrl, '#1a73e8', '');
 const jerryBubble = buildFlex(clZH, dZH, mWZH, aWZH, driveUrlZH, translationFailed ? '#e53e3e' : '#0d7a0d', notionUrl);
 const contractorFlex = { to: d.lineUserId, messages: [{ type: 'flex', altText: cl.title, contents: contractorBubble }] };
-const jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: clZH.title, contents: jerryBubble }] };
-function escHtml(s) { return String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// The Chinese report goes to the engineer in charge: their LINE ID comes from
+// the options Sheet ("LINE ID" column, sent by the form as supervisorLineId).
+// Engineers without one fall back to Jerry only when Jerry is the recipient.
+const JERRY_LINE_ID = 'Ubf65144da2093a2cb9e01528d773413f';
 const JERRY_EMAIL = 'jerry_hsieh@eco-infinic.com';
 const recipientEmail = (d.supervisorEmail || '').trim() || JERRY_EMAIL;
-const isJerry = recipientEmail.toLowerCase() === JERRY_EMAIL.toLowerCase();
+const recipientIsJerry = recipientEmail.toLowerCase() === JERRY_EMAIL.toLowerCase();
+const supervisorLineId = String(d.supervisorLineId || '').trim() || (recipientIsJerry ? JERRY_LINE_ID : '');
+const jerryFlex = { to: supervisorLineId, messages: [{ type: 'flex', altText: clZH.title, contents: jerryBubble }] };
+function escHtml(s) { return String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// "isJerry" feeds the existing "Is Jerry?" IF node: it now means "this
+// report's engineer has a LINE ID to push to" (name kept so the IF node
+// needs no change).
+const isJerry = !!supervisorLineId;
 const emailSubject = `${translationFailed ? '⚠️翻譯失敗(原文) - ' : ''}監工日誌通知 - ${d.projectName || ''} - ${d.date || ''}`;
 const emailHtml = `${translationFailed ? '<p style="color:#e53e3e;font-weight:bold">⚠️ 自動翻譯失敗，本次中文版PDF內容為原文（非正式翻譯），請人工確認後再轉發。</p>' : ''}<p>負責工程師 <b>${escHtml(d.supervisor)}</b> 提交了新的監工日誌。</p><p>工程：${escHtml(d.projectName)}<br>廠區：${escHtml(d.constructionArea)}<br>日期：${escHtml(d.date)}（${escHtml(dZH.weekday)}）<br>廠商：${escHtml(d.contractor)}</p><p><a href="${driveUrlZH}">📥 下載中文版 PDF 報告</a>${notionUrl ? `<br><a href="${notionUrl}">📒 開啟 Notion 頁面</a>` : ''}</p>`;
 return [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex), isJerry, recipientEmail, emailSubject, emailHtml } }];

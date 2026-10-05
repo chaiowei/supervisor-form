@@ -262,6 +262,7 @@
 
   <div class="wrap">
     <div class="banner" id="optionsWarn" style="display:none"></div>
+    <div class="banner" id="myLineIdBox" style="display:none"></div>
     <div class="banner" id="draftBanner" style="display:none">
       <div id="draftBannerText"></div>
       <div class="banner-actions">
@@ -545,6 +546,9 @@ function fillSelect(id, items) {
 }
 
 let supervisorEmailMap = {};
+// 7th CSV column on 監工人員 rows: that engineer's LINE user ID, so n8n can
+// push the Chinese report to whoever is in charge instead of only Jerry.
+let supervisorLineIdMap = {};
 // Hierarchy from the options CSV: 工程師(supervisor) → 廠商(contractor) → 工程名稱(project).
 // contractorsByEngineer[supervisorName] = [contractor names under that engineer]
 // projectsByContractor[contractorName] = [project names under that contractor]
@@ -552,19 +556,42 @@ let contractorsByEngineer = {};
 let projectsByContractor = {};
 let projectNotionUrlMap = {};
 
+// Minimal RFC 4180 CSV parser: Google Sheets quotes any cell containing a
+// comma, quote or newline, which a plain split(',') would break apart.
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else cell += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const res = await fetch(CFG.OPTIONS_URL);
     if (!res.ok) throw new Error('options fetch failed');
     const csv = await res.text();
     const supervisors = [];
-    csv.split('\n').slice(1).forEach(row => {
-      const cols = row.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-      const [name, type, enabled, email, parent, notionLink] = cols;
+    parseCSV(csv).slice(1).forEach(row => {
+      const cols = row.map(s => s.trim());
+      const [name, type, enabled, email, parent, notionLink, lineId] = cols;
       if (!name || enabled !== 'TRUE') return;
       if (type === '監工人員') {
         supervisors.push(name);
         if (email) supervisorEmailMap[name] = email;
+        if (lineId) supervisorLineIdMap[name] = lineId;
       } else if (type === '施工廠商') {
         const key = parent || '';
         if (!contractorsByEngineer[key]) contractorsByEngineer[key] = [];
@@ -917,6 +944,9 @@ async function initLiff() {
     const p = await liff.getProfile();
     lineUserId = p.userId;
     lineDisplayName = p.displayName;
+    // Engineers open the form with ?showid=1 once to look up the LINE user ID
+    // that goes into the options Sheet's "LINE ID" column.
+    if (/[?&]showid=1/.test(decodeURIComponent(location.search))) showMyLineId();
     // Auto-detect language from LINE client locale, but only if the user
     // hasn't already picked one manually (stored in localStorage).
     if (!localStorage.getItem('wl_lang')) {
@@ -956,6 +986,18 @@ function changeFontScale(step) {
   fontScaleIdx = Math.max(0, Math.min(FONT_SCALES.length - 1, fontScaleIdx + step));
   try { localStorage.setItem('wl_fs', String(FONT_SCALES[fontScaleIdx])); } catch (e) {}
   applyFontScale();
+}
+
+function showMyLineId() {
+  const w = document.getElementById('myLineIdBox');
+  w.textContent = '';
+  const label = document.createElement('div');
+  label.textContent = `LINE ID (${lineDisplayName || ''}):`;
+  const id = document.createElement('input');
+  id.type = 'text'; id.readOnly = true; id.value = lineUserId; id.style.marginTop = '6px';
+  id.onclick = () => { id.select(); try { navigator.clipboard.writeText(lineUserId); } catch (e) {} };
+  w.append(label, id);
+  w.style.display = 'block';
 }
 
 // ── Language ─────────────────────────────────────────────
@@ -1244,6 +1286,8 @@ const CONFIRM_FIELDS = [
 ];
 let pendingRaw = null;
 let photoNamePrefix = null; // set on first upload attempt of a report
+let submissionId = null;
+let submitInFlight = false; // blocks a double tap on "Confirm & Send"
 
 function showConfirmScreen(raw) {
   const t = T[lang];
@@ -1268,6 +1312,9 @@ document.getElementById('theForm').addEventListener('submit', e => {
   if (!validate(raw)) return;
   pendingRaw = raw;
   photoNamePrefix = null;
+  // One ID per report: kept across "Resubmit" so n8n can drop a report it
+  // already received (e.g. the reply was lost on a flaky connection).
+  submissionId = (crypto.randomUUID && crypto.randomUUID()) || (Date.now().toString(36) + Math.random().toString(36).slice(2));
   showConfirmScreen(raw);
 });
 
@@ -1327,7 +1374,8 @@ function renderErrorDetail() {
 
 async function proceedSubmit() {
   const raw = pendingRaw;
-  if (!raw) return;
+  if (!raw || submitInFlight) return;
+  submitInFlight = true;
 
   const btn = document.getElementById('submitBtn');
   const lbl = document.getElementById('submitLabel');
@@ -1386,6 +1434,8 @@ async function proceedSubmit() {
       lineUserId,
       lineDisplayName,
       supervisorEmail: supervisorEmailMap[raw.supervisor] || '',
+      supervisorLineId: supervisorLineIdMap[raw.supervisor] || '',
+      submissionId,
       language: lang,
       submittedAt: new Date().toISOString(),
       photoUrls,
@@ -1431,6 +1481,8 @@ async function proceedSubmit() {
     btn.disabled = false;
     spn.style.display = 'none';
     lbl.textContent = t.submitLabel;
+  } finally {
+    submitInFlight = false;
   }
 }
 
