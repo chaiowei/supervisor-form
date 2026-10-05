@@ -552,14 +552,36 @@ let contractorsByEngineer = {};
 let projectsByContractor = {};
 let projectNotionUrlMap = {};
 
+// Minimal RFC 4180 CSV parser: Google Sheets quotes any cell containing a
+// comma, quote or newline, which a plain split(',') would break apart.
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else cell += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const res = await fetch(CFG.OPTIONS_URL);
     if (!res.ok) throw new Error('options fetch failed');
     const csv = await res.text();
     const supervisors = [];
-    csv.split('\n').slice(1).forEach(row => {
-      const cols = row.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+    parseCSV(csv).slice(1).forEach(row => {
+      const cols = row.map(s => s.trim());
       const [name, type, enabled, email, parent, notionLink] = cols;
       if (!name || enabled !== 'TRUE') return;
       if (type === '監工人員') {
@@ -1244,6 +1266,8 @@ const CONFIRM_FIELDS = [
 ];
 let pendingRaw = null;
 let photoNamePrefix = null; // set on first upload attempt of a report
+let submissionId = null;
+let submitInFlight = false; // blocks a double tap on "Confirm & Send"
 
 function showConfirmScreen(raw) {
   const t = T[lang];
@@ -1268,6 +1292,9 @@ document.getElementById('theForm').addEventListener('submit', e => {
   if (!validate(raw)) return;
   pendingRaw = raw;
   photoNamePrefix = null;
+  // One ID per report: kept across "Resubmit" so n8n can drop a report it
+  // already received (e.g. the reply was lost on a flaky connection).
+  submissionId = (crypto.randomUUID && crypto.randomUUID()) || (Date.now().toString(36) + Math.random().toString(36).slice(2));
   showConfirmScreen(raw);
 });
 
@@ -1327,7 +1354,8 @@ function renderErrorDetail() {
 
 async function proceedSubmit() {
   const raw = pendingRaw;
-  if (!raw) return;
+  if (!raw || submitInFlight) return;
+  submitInFlight = true;
 
   const btn = document.getElementById('submitBtn');
   const lbl = document.getElementById('submitLabel');
@@ -1386,6 +1414,7 @@ async function proceedSubmit() {
       lineUserId,
       lineDisplayName,
       supervisorEmail: supervisorEmailMap[raw.supervisor] || '',
+      submissionId,
       language: lang,
       submittedAt: new Date().toISOString(),
       photoUrls,
@@ -1431,6 +1460,8 @@ async function proceedSubmit() {
     btn.disabled = false;
     spn.style.display = 'none';
     lbl.textContent = t.submitLabel;
+  } finally {
+    submitInFlight = false;
   }
 }
 

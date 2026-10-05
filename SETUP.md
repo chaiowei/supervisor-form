@@ -1,183 +1,106 @@
 # LINE 監工日誌系統 — 設定指引
 
-> 系統名稱：LINE Supervisor Daily Report  
-> 最後更新：2026-06-29
+> 最後更新：2026-10-05
 
 ---
 
 ## 系統架構
 
 ```
-承包商 (LINE)
-    │
+承包商／負責工程師 (LINE)
+    │  開啟 LIFF 表單 https://liff.line.me/2010536222-MhPB41l8
     ▼
-LIFF 雙語表單 (GitHub Pages)
-    │  填寫完成後：
-    │  1. 照片壓縮後逐張 POST 到 n8n「Supervisor Photo Upload」
-    │     → 存進 Google Drive、開放「知道連結者可檢視」→ 回傳圖片 URL
-    │  2. 照片全部上傳成功後，表單資料 + 照片 URLs POST 到 n8n Webhook
-    │
+LIFF 三語表單 index.html（GitHub Pages: https://chaiowei.github.io/supervisor-form）
+    │  1. 從 Google Sheets 選項表讀取 工程師 → 廠商 → 工程 下拉選單
+    │  2. 照片壓縮後逐張 POST 到 n8n「Supervisor Photo Upload」→ 存 Google Drive，回傳圖片網址
+    │  3. 照片全部成功後，表單資料 + 照片網址 POST 到 n8n「Supervisor Daily Report v2」
     ▼
-n8n Cloud Webhook
-    │
-    ├─► Prepare Data (Code) — 整理資料
-    │
-    ├─► Translate to ZH1 (Gemini) — 泰/英表單才呼叫，中文表單直接跳過
-    │
-    ├─► Generate PDF HTML → PDF.co → Google Drive Upload（承包商語言 + 中文雙版）
-    │
-    ├─► Build Notion Payload → Notion: Create Daily Log — 寫入 Daily Work Logs 資料庫，並透過 Related Work Item 關聯到 Work Items 裡對應的工程頁面
-    │       └─► Build Photo Blocks → Notion: Append Photos — 把照片以圖片區塊附加到頁面內容（直接顯示，不只是連結文字）
-    │
-    ├─► LINE → Contractor — 推送原文報告給承包商
-    │
-    └─► LINE → Jerry / Email → Recipient1 — 推送中文報告給負責工程師
+n8n「Supervisor Daily Report v2」（webhook: supervisor-report）
+    ├─ Prepare Data — 整理資料；同一個 submissionId 重複送出時直接略過（防重複報告）
+    ├─ Translate to ZH — 泰／英文才翻譯（Gemini），中文直接跳過
+    ├─ Generate PDF HTML → PDF.co → Google Drive（承包商語言版 + 中文版）
+    ├─ Build Notion Payload → Notion: Create Daily Log（Daily Work Logs 資料庫）
+    │     ├─ Build Photo Blocks → Notion: Append Photos（照片直接顯示在頁面裡）
+    │     └─ Build Messages
+    │           ├─ LINE → Contractor（承包商語言版：下載 PDF／分享）
+    │           ├─ LINE → Jerry（中文版：下載 PDF／分享／Notion 頁面）
+    │           └─ Email → 負責工程師（中文 PDF + Notion 連結）
+    └─ 任何節點失敗 → 「Supervisor Error Notification」用 LINE 通知 Jerry
 ```
 
 ---
 
-## 已完成部分 ✅
+## repo 檔案
 
-| 項目 | 狀態 | 備註 |
-|------|------|------|
-| LIFF 雙語表單 (EN/TH) | ✅ 完成 | GitHub Pages: https://chaiowei.github.io/supervisor-form |
-| n8n 工作流程 | ✅ 已匯入 | ID: OCwh63R7TRuPgdDj（Supervisor Daily Report v2） |
-| n8n Webhook URL | ✅ 已設定 | https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report |
-| Notion 資料庫 | ✅ 已建立 | Daily Work Logs，Database ID: 2190dd6f-6b0a-80f0-81a4-fe071bce329f（注意：底層 Data Source/collection ID 是另一個 `2190dd6f-6b0a-803a-b151-000bc01c3b86`，兩者是 Notion 多資料源架構下分開的不同物件，別搞混） |
-| Notion DB 寫入工作流程 | ✅ 已設定 | Notion: Create Daily Log 節點，`databaseId` 改用 **URL 模式**（`https://www.notion.so/2190dd6f6b0a80f081a4fe071bce329f`），避免手動填 ID 時誤填成 Data Source ID 導致 404 |
-| Notion Related Work Item 關聯 | ✅ 已串接 | 來源：選項 CSV **第 6 欄**（「工程名稱」列填該工程在 Notion Work Items 資料庫的頁面連結），由 index.html 讀取後依選取工程組成 `notionProjectUrls` 傳給後端，於 Build Notion Payload 節點轉成 relation ID |
-| index.html Webhook URL | ✅ 已填入 | 已 push 到 GitHub |
+| 檔案 | 用途 |
+|------|------|
+| `index.html` | LIFF 表單（GitHub Pages 直接發布 master 分支） |
+| `privacy.html` | 隱私權政策頁（Google OAuth 正式版需要） |
+| `Supervisor Daily Report v2.json` | n8n 主流程匯出檔 |
+| `Supervisor Photo Upload.json` | n8n 照片上傳流程（照片 → Google Drive） |
+| `Supervisor Error Notification.json` | n8n 錯誤通知流程 |
+| `Migrate imgBB Photos to Drive.json` | 一次性流程：把舊 imgBB 照片搬到 Drive（已用不到，保留備查） |
+| `n8n-snippets/*.js` | 主流程各 Code 節點的最新程式碼，修改 n8n 時直接整段貼上 |
+| `LINE Form Options 2.json` | 舊版主流程備份（名稱有誤，非選項流程） |
 
----
-
-## 待手動完成 ⚠️
-
-### 步驟 0：重新匯入 n8n 工作流程（**必做**）
-
-> n8n Cloud 的儲存 API 有 401 bug，必須手動重新匯入修正版 JSON。
-
-1. 前往 https://jerry-hsieh.app.n8n.cloud/home/workflows
-2. 找到 **Supervisor Daily Report** → 右鍵 → **Delete**（或 Archive）
-3. 點右上角 **Add workflow** → **Import from file**
-4. 選 `n8n-workflow.json`（本資料夾內）
-5. 開啟匯入後的 workflow，繼續步驟 1 設定憑證
-
-> ⚠️ 同步匯入 `n8n-form-options.json`（LINE 表單選項查詢工作流程）
+> repo 裡的 n8n JSON 是備份，**實際運作的是 n8n 上的版本**。改了 n8n 之後記得同步回 repo（匯出或請 Claude 更新）。
 
 ---
 
-### 步驟 1：n8n 設定（兩部分：Credentials + Variables）
+## Google Sheets 選項表
 
-前往 Supervisor Daily Report workflow
+表單的下拉選單來自「發布到網路」的 Google Sheets CSV（網址在 `index.html` 的 `CFG.OPTIONS_URL`）。第一列是標題，從第二列開始每列一筆：
 
-#### 1-A：Credentials（憑證）— 在節點上設定
+| 欄 | 名稱 | 說明 |
+|----|------|------|
+| 1 | 名稱 | 顯示在下拉選單的文字（可含逗號） |
+| 2 | 類型 | `監工人員`、`施工廠商` 或 `工程名稱`（比對用，不可改字） |
+| 3 | 啟用 | `TRUE` 才會出現在選單 |
+| 4 | Email | 監工人員列：報告 Email 寄給誰 |
+| 5 | 上層 | 施工廠商列填所屬工程師名稱；工程名稱列填所屬廠商名稱 |
+| 6 | Notion工程連結 | 工程名稱列：該工程在 Notion Work Items 的頁面連結，用來自動關聯 Related Work Item |
 
-**Notion: Create Daily Log 節點**
-- 點擊節點 → Credential → 選擇 **Notion work**
-- 這組憑證背後的 Notion Integration 目前叫「工作首頁」；務必確認「Daily Work Logs」資料庫、以及 Work Items 資料庫底下要被關聯的工程頁面，都已在 Notion 的 Connections 分享給這個 integration，否則會出現 `Could not find database` 404
-
----
-
-#### 1-B：其他 Credentials（在節點上設）
-
-**Gemini API 節點**
-- 點擊節點 → Credential → Create New
-- 類型：**Query Auth**
-- Name: `key`
-- Value: 你的 Gemini API Key
-
-**LINE → Contractor 節點 & LINE → Jerry 節點（兩個都要設同一個）**
-- 點擊節點 → Credential → Create New
-- 類型：**Header Auth**
-- Name: `Authorization`
-- Value: `Bearer 你的LINE_CHANNEL_ACCESS_TOKEN`
-
-**LINE → Jerry 節點 JSON body**
-- 點擊節點 → 找到 `REPLACE_WITH_YOUR_LINE_USER_ID`
-- 替換成你的 LINE User ID
-- 取得方式：傳一則訊息給你的 LINE OA，在 n8n executions log 找 `lineUserId`
+中文版 LINE 報告只推播給 Jerry（且僅限 Jerry 為該工程師的 Email 收件人時）；其他負責工程師收 Email。
 
 ---
 
----
+## n8n 工作流程與憑證
 
-### 步驟 2：LINE Developers — 建立 LIFF App
+n8n Cloud：https://jerry-hsieh.app.n8n.cloud
 
-前往：https://developers.line.biz/console/
+| 流程 | 狀態 | 需要的憑證 |
+|------|------|-----------|
+| Supervisor Daily Report v2（ID `OCwh63R7TRuPgdDj`） | Active | Google Drive account、Notion work、Gmail account、LINE（Header Auth `Authorization: Bearer <channel access token>`）、PDF.co、Gemini |
+| Supervisor Photo Upload | Active | Google Drive account |
+| Supervisor Error Notification | Active，並在主流程 Settings → Error workflow 指定 | LINE |
 
-1. 選擇你的 LINE Official Account
-2. 進入 **LIFF** 分頁
-3. 點擊 **Add**
-4. 填入：
-   - LIFF app name: `監工日誌`
-   - Size: **Full**
-   - Endpoint URL: `https://chaiowei.github.io/supervisor-form`
-   - Scope: `profile` ✅、`openid` ✅
-5. 建立後取得 **LIFF ID**（格式：`1234567890-AbCdEfGh`）
+**Google Drive／Gmail 授權不會每 7 天過期的前提：** Google Cloud（My First Project）→ Google Auth Platform → 目標對象 → 發布狀態必須是「**實際運作中**」。若改回「測試」，授權會每 7 天失效，照片會全部上傳失敗、報告送不出去。
+
+**Notion：** 「Daily Work Logs」資料庫與 Work Items 資料庫都要在 Notion 的 Connections 分享給 n8n 使用的 integration（目前叫「工作首頁」），否則會 404。資料庫網址用 URL 模式填，別誤填 Data Source ID。
 
 ---
 
-### 步驟 3：匯入照片上傳工作流程（Google Drive）
+## 修改 n8n 主流程 Code 節點的方式
 
-照片不再使用 imgBB，改由 n8n 存進 Google Drive。
-
-1. n8n → **Add workflow** → **Import from file** → 選 `Supervisor Photo Upload.json`
-2. 確認 **Drive: Upload Photo**、**Drive: Share Photo** 兩個節點的憑證都是 **Google Drive account**
-3. （建議）在 Google Drive 建一個「監工日誌照片」資料夾，把資料夾 ID 填到 **Drive: Upload Photo** 的 Folder（預設和 PDF 放同一個資料夾）
-4. 右上角切換為 **Active**
-5. Webhook 網址為 `https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-photo`（已寫在 index.html 的 `PHOTO_UPLOAD_URL`）
-
-> ⚠️ 照片上傳依賴 Google Drive 授權。授權過期時照片會全部上傳失敗、報告無法送出，請務必把 Google Cloud OAuth 應用程式發布為「正式版」，避免每 7 天過期。
+1. 打開 `n8n-snippets/` 裡對應的檔案（例如 `Build Messages.js`），全選複製
+2. n8n 打開 Supervisor Daily Report v2 → 雙擊同名節點 → 程式碼框全部取代 → Save
+3. 送一份測試日誌確認
 
 ---
 
-### 步驟 4：更新 index.html（取得 LIFF ID 後）
+## 照片儲存
 
-編輯 `index.html` 第 340-344 行的 CFG 區塊：
-
-```javascript
-const CFG = {
-  LIFF_ID:          '填入你的 LIFF ID',
-  N8N_WEBHOOK_URL:  'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report',  // 已填
-  PHOTO_UPLOAD_URL: 'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-photo',
-  MAX_PHOTOS: 10,
-  PHOTO_MAX_PX: 1280,
-  PHOTO_QUALITY: 0.70,
-};
-```
-
-然後 push 到 GitHub：
-```bash
-git add index.html
-git commit -m "config: fill LIFF ID"
-git push
-```
+- 新照片：Google Drive「工作日誌 › 工程照片---from 廠商」（在 Supervisor Photo Upload → Drive: Upload Photo 設定資料夾）
+- 檔名：`日期_廠商_時分秒_序號.jpg`
+- 舊 imgBB 照片已搬到同一資料夾（`imgbb_###.jpg` 與 `日期_序號.jpg`）；確認無誤後可到 imgBB 停用舊的 API Key
 
 ---
 
-### 步驟 5：啟動工作流程
+## 常見問題
 
-1. 前往 https://jerry-hsieh.app.n8n.cloud/workflow/OCwh63R7TRuPgdDj
-2. 確認所有節點憑證都已設定（節點左上角無紅色警示）
-3. 右上角 **Inactive** 切換為 **Active**
-
----
-
-## 表單使用方式
-
-承包商透過 LINE OA 的 Menu 或 Rich Menu 點擊連結：
-```
-https://liff.line.me/{LIFF_ID}
-```
-
-填寫完成後：
-- 承包商收到：英文或泰文版報告
-- Jerry 收到：中文版報告
-- Notion 資料庫：自動新增一筆紀錄
-
----
-
-## 支援承包商數量
-
-- 最多 **10 人**（設計無上限，LINE push API 按訊息計費）
-- 照片：每次最多 10 張，自動壓縮至 1280px / 70% 品質
+| 狀況 | 可能原因 |
+|------|---------|
+| 表單顯示「照片上傳失敗」 | Google Drive 授權失效（n8n → Credentials → Google Drive account 重新連結）、Supervisor Photo Upload 沒有 Active、工地網路不穩（錯誤頁紅字下方有原因） |
+| 表單成功但沒收到 LINE | LINE 官方帳號當月推播額度用完、承包商沒加官方帳號好友；n8n Executions 可看細節 |
+| Notion 沒有新頁面 | Notion integration 沒分享到資料庫；LINE 仍會照常發送（只是少了 Notion 按鈕） |
+| 同一份報告出現兩次 | 正常情況下已由 submissionId 擋掉；若仍發生，檢查 Prepare Data 是否為 `n8n-snippets/Prepare Data.js` 的最新版 |
