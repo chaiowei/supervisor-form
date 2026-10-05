@@ -23,7 +23,7 @@ n8n「Supervisor Daily Report v2」（webhook: supervisor-report）
     │     ├─ Build Photo Blocks → Notion: Append Photos（照片直接顯示在頁面裡）
     │     └─ Build Messages
     │           ├─ LINE → Contractor（承包商語言版：下載 PDF／分享）
-    │           ├─ LINE → Jerry（中文版給該工程的負責工程師：下載 PDF／分享／Notion 頁面）
+    │           ├─ LINE → Jerry（中文版：下載 PDF／分享／Notion 頁面）
     │           └─ Email → 負責工程師（中文 PDF + Notion 連結）
     └─ 任何節點失敗 → 「Supervisor Error Notification」用 LINE 通知 Jerry
 ```
@@ -59,11 +59,8 @@ n8n「Supervisor Daily Report v2」（webhook: supervisor-report）
 | 4 | Email | 監工人員列：報告 Email 寄給誰 |
 | 5 | 上層 | 施工廠商列填所屬工程師名稱；工程名稱列填所屬廠商名稱 |
 | 6 | Notion工程連結 | 工程名稱列：該工程在 Notion Work Items 的頁面連結，用來自動關聯 Related Work Item |
-| 7 | LINE ID | 監工人員列：該工程師的 LINE user ID，中文版報告會推播給他 |
 
-**如何取得工程師的 LINE ID：** 請工程師先加 LINE 官方帳號為好友，再用 LINE 打開
-`https://liff.line.me/2010536222-MhPB41l8?showid=1`，表單上方會顯示他的 LINE ID（點一下可複製），填到第 7 欄即可。
-沒填 LINE ID 的工程師只會收到 Email（Jerry 例外，沒填時仍會推播給 Jerry）。
+中文版 LINE 報告只推播給 Jerry（且僅限 Jerry 為該工程師的 Email 收件人時）；其他負責工程師收 Email。
 
 ---
 
@@ -104,6 +101,6 @@ n8n Cloud：https://jerry-hsieh.app.n8n.cloud
 | 狀況 | 可能原因 |
 |------|---------|
 | 表單顯示「照片上傳失敗」 | Google Drive 授權失效（n8n → Credentials → Google Drive account 重新連結）、Supervisor Photo Upload 沒有 Active、工地網路不穩（錯誤頁紅字下方有原因） |
-| 表單成功但沒收到 LINE | LINE 官方帳號當月推播額度用完、工程師沒加好友或 LINE ID 填錯；n8n Executions 可看細節 |
+| 表單成功但沒收到 LINE | LINE 官方帳號當月推播額度用完、承包商沒加官方帳號好友；n8n Executions 可看細節 |
 | Notion 沒有新頁面 | Notion integration 沒分享到資料庫；LINE 仍會照常發送（只是少了 Notion 按鈕） |
 | 同一份報告出現兩次 | 正常情況下已由 submissionId 擋掉；若仍發生，檢查 Prepare Data 是否為 `n8n-snippets/Prepare Data.js` 的最新版 |

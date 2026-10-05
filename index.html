@@ -262,7 +262,6 @@
 
   <div class="wrap">
     <div class="banner" id="optionsWarn" style="display:none"></div>
-    <div class="banner" id="myLineIdBox" style="display:none"></div>
     <div class="banner" id="draftBanner" style="display:none">
       <div id="draftBannerText"></div>
       <div class="banner-actions">
@@ -546,9 +545,6 @@ function fillSelect(id, items) {
 }
 
 let supervisorEmailMap = {};
-// 7th CSV column on 監工人員 rows: that engineer's LINE user ID, so n8n can
-// push the Chinese report to whoever is in charge instead of only Jerry.
-let supervisorLineIdMap = {};
 // Hierarchy from the options CSV: 工程師(supervisor) → 廠商(contractor) → 工程名稱(project).
 // contractorsByEngineer[supervisorName] = [contractor names under that engineer]
 // projectsByContractor[contractorName] = [project names under that contractor]
@@ -586,12 +582,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const supervisors = [];
     parseCSV(csv).slice(1).forEach(row => {
       const cols = row.map(s => s.trim());
-      const [name, type, enabled, email, parent, notionLink, lineId] = cols;
+      const [name, type, enabled, email, parent, notionLink] = cols;
       if (!name || enabled !== 'TRUE') return;
       if (type === '監工人員') {
         supervisors.push(name);
         if (email) supervisorEmailMap[name] = email;
-        if (lineId) supervisorLineIdMap[name] = lineId;
       } else if (type === '施工廠商') {
         const key = parent || '';
         if (!contractorsByEngineer[key]) contractorsByEngineer[key] = [];
@@ -944,9 +939,6 @@ async function initLiff() {
     const p = await liff.getProfile();
     lineUserId = p.userId;
     lineDisplayName = p.displayName;
-    // Engineers open the form with ?showid=1 once to look up the LINE user ID
-    // that goes into the options Sheet's "LINE ID" column.
-    if (/[?&]showid=1/.test(decodeURIComponent(location.search))) showMyLineId();
     // Auto-detect language from LINE client locale, but only if the user
     // hasn't already picked one manually (stored in localStorage).
     if (!localStorage.getItem('wl_lang')) {
@@ -986,18 +978,6 @@ function changeFontScale(step) {
   fontScaleIdx = Math.max(0, Math.min(FONT_SCALES.length - 1, fontScaleIdx + step));
   try { localStorage.setItem('wl_fs', String(FONT_SCALES[fontScaleIdx])); } catch (e) {}
   applyFontScale();
-}
-
-function showMyLineId() {
-  const w = document.getElementById('myLineIdBox');
-  w.textContent = '';
-  const label = document.createElement('div');
-  label.textContent = `LINE ID (${lineDisplayName || ''}):`;
-  const id = document.createElement('input');
-  id.type = 'text'; id.readOnly = true; id.value = lineUserId; id.style.marginTop = '6px';
-  id.onclick = () => { id.select(); try { navigator.clipboard.writeText(lineUserId); } catch (e) {} };
-  w.append(label, id);
-  w.style.display = 'block';
 }
 
 // ── Language ─────────────────────────────────────────────
@@ -1434,7 +1414,6 @@ async function proceedSubmit() {
       lineUserId,
       lineDisplayName,
       supervisorEmail: supervisorEmailMap[raw.supervisor] || '',
-      supervisorLineId: supervisorLineIdMap[raw.supervisor] || '',
       submissionId,
       language: lang,
       submittedAt: new Date().toISOString(),
