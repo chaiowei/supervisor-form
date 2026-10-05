@@ -1,5 +1,12 @@
 # 更新紀錄
 
+## 2026-10-05
+
+### LINE 報告新增「分享」按鈕與 Notion 連結
+- 承包商與負責工程師收到的 LINE 報告下方，除了「下載 PDF」外新增「📤 分享」按鈕：按下後開啟 LINE 選擇聊天室，直接轉傳報告摘要與 PDF 連結。
+- 負責工程師（Jerry）收到的 LINE 報告與 Email 加上「📒 開啟 Notion 頁面」連結。
+- 為了拿到 Notion 頁面網址，n8n 改為「先建立 Notion 日誌頁面，再發送 LINE／Email」，訊息會比以前晚幾秒到；Notion 建立失敗時訊息照常發送，只是少了 Notion 按鈕。
+
 ## 2026-10-04
 
 ### 照片改存 Google Drive（停用 imgBB）
