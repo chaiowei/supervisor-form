@@ -1,5 +1,45 @@
 # 更新紀錄
 
+## 2026-10-13（續）
+
+### 日期與填寫時間
+- 日期預設改為**手機本地的今天**（原本用國際時間，泰國早上 7 點前會帶成昨天）。日期仍可修改，但不能選未來的日期；選了今天以前的日期，欄位下方會出現「⚠️ 補填 10/12 的日誌」提示。
+- 送出時一併帶上**手機的填寫時間與時區**（例如 `2026/10/13 18:30:05 (Asia/Bangkok, UTC+7)`）。PDF 的「時間」欄改為「填寫時間」、右下角的「報告產出時間」改為「填寫時間」，不再受 n8n 伺服器時區影響；補填的日誌會標示「（補填）」。中文 LINE、Email、Notion 也顯示填寫時間。
+
+### 天氣選項
+- 上午／下午天氣各選一種：晴天／下雨／大雨／強風／雷雨（三語）。下方提示「同時發生時選最嚴重的：雷雨 > 大雨 > 強風 > 下雨 > 晴天」。舊報告的晴天／下雨不受影響。
+
+### 今日危險作業（必填）
+- 新增「工安」區塊，可複選：無危險作業（最上方）、動火作業、吊裝作業、高空作業、局限空間作業。勾「無危險作業」會清掉其他勾選，反之亦然。
+- 有危險作業時：PDF 以紅字標示；Jerry 的 LINE 標題前加「⚠️ 危險作業：動火作業、吊裝作業｜」；Email 標題與內文、Notion 也會寫入。
+
+### 出工人數可填 0
+- 停工日可以填 0（仍為必填）。
+
+### 自動帶入上一份的工程師／廠商／工程
+- 每次送出成功後，記住這支手機上次選的「負責工程師、施工廠商、工程名稱」，下次開表單自動帶入；其他欄位一律空白重填。已在 Google Sheet 停用或改名的選項不會帶入；選擇「恢復草稿」時以草稿為準。
+
+### 訊號差時的改善
+- 下拉選項讀取加 15 秒逾時；讀不到時改用這支手機上次成功載入的選項，並顯示黃色提示。
+- 送出報告加 60 秒逾時，不會一直轉圈；逾時會顯示原因，按「重新送出」不會產生重複報告。
+
+### Notion
+- 「Daily Work Logs」新增欄位（已建立）：`Contractor`、`Engineer`、`Workers`、`AM Weather`、`PM Weather`、`Hazardous Work`、`Filled At`、`Late Entry`，可以直接在 Notion 篩選、分組、統計。
+- `Notion: Create Daily Log` 由 Notion 節點改為 HTTP Request（直接呼叫 Notion API），欄位內容在 `Build Notion Payload` 程式碼中組好。長文字會自動切成每段 2000 字，不會再因為內容太長而寫入失敗。
+- Notion 寫入失敗時，Jerry 的 LINE 會出現紅字「⚠️ Notion 寫入失敗」，Email 也會附上錯誤原因（以前只是少一個按鈕，不會察覺）。
+
+### 中文版 PDF 對照原文
+- 泰文／英文報告的中文版 PDF，在「施工項目、供給材料、機具、取樣試驗、品質數量檢查」的翻譯下方以灰字附上「原文」，方便核對數量、規格與型號。中文表單與翻譯失敗時不會重複顯示。
+
+### 部署步驟
+1. **n8n 主流程（Supervisor Daily Report v2）先更新**（新程式碼也能處理舊版表單送來的資料）：
+   - 把 `n8n-snippets/` 裡的 `Prepare Data.js`、`Generate PDF HTML.js`、`Build Notion Payload.js`、`Build Messages.js`、`Build Photo Blocks.js` 分別整段貼到同名 Code 節點。
+   - 刪除舊的 `Notion: Create Daily Log` 節點 → 打開 `n8n-snippets/Notion Create Daily Log (node).json` 全選複製 → 在 n8n 畫布上按 Ctrl+V 貼上 → 確認憑證是「Notion work」→ 把 `Build Notion Payload` 接到它、它再接到 `Build Photo Blocks` 與 `Build Messages`（跟原本一樣）。
+   - Workflow Settings → Timezone 設為 `Asia/Bangkok`（保險用）。
+   - Save 後送一份測試日誌。
+   - 也可以改用整份匯入 `Supervisor Daily Report v2.json`（匯入後要重新確認 Error workflow 與憑證）。
+2. **再合併表單**（`index.html`，`APP_VERSION` 已更新為 `2026-10-13.3`），GitHub Pages 自動上線。
+
 ## 2026-10-13
 
 ### 表單自動更新到最新版（解決 LINE 快取舊網頁）

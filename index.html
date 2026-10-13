@@ -102,6 +102,19 @@
     textarea { min-height: 80px; resize: vertical; }
     /* Weather grid */
     .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field-note { font-size: calc(12px * var(--fs)); color: var(--muted); margin-top: 8px; line-height: 1.5; }
+    .date-late { display: none; margin-top: 6px; font-size: calc(13px * var(--fs)); font-weight: 600; color: #a05a00; }
+    /* Hazardous work checkboxes */
+    .hz-list { display: flex; flex-direction: column; gap: 6px; }
+    .hz-item {
+      display: flex; align-items: center; gap: 10px; margin: 0;
+      padding: 11px 12px; border: 1.5px solid var(--border); border-radius: 9px;
+      background: #fafdf9; font-size: calc(15px * var(--fs)); font-weight: 500; cursor: pointer;
+    }
+    .hz-item input { width: calc(20px * var(--fs)); height: calc(20px * var(--fs)); flex-shrink: 0; }
+    .hz-item.checked { border-color: var(--green); background: #eefaee; }
+    .hz-item.risk.checked { border-color: #e53e3e; background: #fff1f1; }
+    .field.err .hz-item { border-color: var(--red); }
     /* Error state */
     .err-msg { display: none; color: var(--red); font-size: calc(11px * var(--fs)); margin-top: 4px; }
     .field.err input, .field.err select, .field.err textarea, .field.err .multiselect-btn { border-color: var(--red); }
@@ -317,6 +330,7 @@
         <div class="field" id="f-date">
           <label><span id="l-date">Date</span><span class="req">*</span></label>
           <input type="date" name="date" id="i-date">
+          <div class="date-late" id="dateLateHint"></div>
           <div class="err-msg" id="e-date">Required / จำเป็น</div>
         </div>
       </div>
@@ -330,7 +344,10 @@
             <select name="morningWeather">
               <option value="">--</option>
               <option value="sunny" id="w-sunny-1">☀️ Sunny</option>
-              <option value="rainy" id="w-rainy-1">🌧️ Rainy</option>
+              <option value="rainy" id="w-rainy-1">🌧️ Rain</option>
+              <option value="heavyRain" id="w-heavyRain-1">🌧️🌧️ Heavy rain</option>
+              <option value="strongWind" id="w-strongWind-1">💨 Strong wind</option>
+              <option value="thunderstorm" id="w-thunderstorm-1">⛈️ Thunderstorm</option>
             </select>
             <div class="err-msg" id="e-morningWeather">Required / จำเป็น</div>
           </div>
@@ -339,10 +356,34 @@
             <select name="afternoonWeather">
               <option value="">--</option>
               <option value="sunny" id="w-sunny-2">☀️ Sunny</option>
-              <option value="rainy" id="w-rainy-2">🌧️ Rainy</option>
+              <option value="rainy" id="w-rainy-2">🌧️ Rain</option>
+              <option value="heavyRain" id="w-heavyRain-2">🌧️🌧️ Heavy rain</option>
+              <option value="strongWind" id="w-strongWind-2">💨 Strong wind</option>
+              <option value="thunderstorm" id="w-thunderstorm-2">⛈️ Thunderstorm</option>
             </select>
             <div class="err-msg" id="e-afternoonWeather">Required / จำเป็น</div>
           </div>
+        </div>
+        <div class="field-note" id="h-weather">If several happen, pick the most severe: Thunderstorm &gt; Heavy rain &gt; Strong wind &gt; Rain &gt; Sunny</div>
+      </div>
+
+      <!-- 2b. Hazardous work -->
+      <div class="card">
+        <div class="sec-title" id="secHz">Safety</div>
+        <div class="field" id="f-hazardWork">
+          <label>
+            <span id="l-hazardWork">Hazardous Work Today</span><span class="req">*</span>
+            <span class="hint" id="h-hazardWork">Tick every type done today, or "No hazardous work"</span>
+          </label>
+          <div class="hz-list" id="hazardList">
+            <label class="hz-item"><input type="checkbox" class="hz-chk" value="none"><span id="hz-none">✅ No hazardous work</span></label>
+            <label class="hz-item risk"><input type="checkbox" class="hz-chk" value="hotWork"><span id="hz-hotWork">🔥 Hot work</span></label>
+            <label class="hz-item risk"><input type="checkbox" class="hz-chk" value="lifting"><span id="hz-lifting">🏗️ Lifting</span></label>
+            <label class="hz-item risk"><input type="checkbox" class="hz-chk" value="height"><span id="hz-height">🪜 Work at height</span></label>
+            <label class="hz-item risk"><input type="checkbox" class="hz-chk" value="confinedSpace"><span id="hz-confinedSpace">🕳️ Confined space</span></label>
+          </div>
+          <input type="hidden" name="hazardWork" id="hidden-hazardWork">
+          <div class="err-msg" id="e-hazardWork">Required / จำเป็น</div>
         </div>
       </div>
 
@@ -381,9 +422,9 @@
             <span id="l-workers">Number of Workers</span><span class="req">*</span>
             <span class="hint" id="h-workers">Total on-site today</span>
           </label>
-          <input type="number" name="workers" min="1" max="9999" step="1" inputmode="numeric" id="i-workers"
+          <input type="number" name="workers" min="0" max="9999" step="1" inputmode="numeric" id="i-workers"
             onkeydown="return ![69,101,190,188,189,107,109].includes(event.keyCode)"
-            oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value!==''&&(this.value<1||!Number.isInteger(+this.value)))this.value=Math.max(1,Math.floor(+this.value))">
+            oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value!=='')this.value=String(parseInt(this.value,10))">
           <div class="err-msg" id="e-workers">Required / จำเป็น</div>
         </div>
       </div>
@@ -536,7 +577,7 @@
 // Bump on every change to this file. The LINE in-app browser keeps serving a
 // cached copy of the page for a long time after an update; checkForUpdate()
 // compares this against the live file and reloads when they differ.
-const APP_VERSION = '2026-10-13.2';
+const APP_VERSION = '2026-10-13.3';
 
 const CFG = {
   LIFF_ID:          '2010536222-MhPB41l8',
@@ -556,7 +597,18 @@ const CFG = {
 };
 // ═══════════════════════════════════════════════════════════
 
-// Auto-populate dropdowns from Notion via n8n
+// Hazardous-work checkboxes, in display order ("none" first). Sent to n8n as a
+// comma-separated list of these codes in the hazardWork field.
+const HAZARD_CODES = ['none', 'hotWork', 'lifting', 'height', 'confinedSpace'];
+
+// Phone-local date as YYYY-MM-DD. toISOString() is UTC, which in Thailand
+// (UTC+7) still shows yesterday until 07:00.
+function localDateStr(d = new Date()) {
+  const p2 = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+}
+
+// Auto-populate dropdowns from the options CSV
 function fillSelect(id, items) {
   const sel = document.getElementById(id);
   if (!sel) return;
@@ -598,56 +650,122 @@ function parseCSV(text) {
   return rows;
 }
 
+// The last successfully loaded CSV is kept on the phone, so a site with no
+// signal can still fill in the form with the options from last time.
+const OPTIONS_CACHE_KEY = 'wl_options_csv';
+
+function applyOptionsCsv(csv) {
+  const supervisors = [];
+  supervisorEmailMap = {}; contractorsByEngineer = {}; projectsByContractor = {}; projectNotionUrlMap = {};
+  parseCSV(csv).slice(1).forEach(row => {
+    const cols = row.map(s => s.trim());
+    const [name, type, enabled, email, parent, notionLink] = cols;
+    if (!name || enabled !== 'TRUE') return;
+    if (type === '監工人員') {
+      supervisors.push(name);
+      if (email) supervisorEmailMap[name] = email;
+    } else if (type === '施工廠商') {
+      const key = parent || '';
+      if (!contractorsByEngineer[key]) contractorsByEngineer[key] = [];
+      contractorsByEngineer[key].push(name);
+    } else if (type === '工程名稱') {
+      const key = parent || '';
+      if (!projectsByContractor[key]) projectsByContractor[key] = [];
+      projectsByContractor[key].push(name);
+      // 6th CSV column: "Notion工程連結" — the project's Work Item page in
+      // Notion, used server-side to auto-link the daily log's Related Work Item.
+      if (notionLink) projectNotionUrlMap[name] = notionLink;
+    }
+  });
+  return supervisors;
+}
+
+// Replace the "Loading options..." placeholder once the hierarchy is ready —
+// the select stays disabled up to this point so a fast tap can't pick a
+// supervisor before contractorsByEngineer/projectsByContractor are populated
+// (that race left the contractor/project lists empty).
+function enableSupervisorSelect(supervisors) {
+  const supSel = document.getElementById('sel-supervisor');
+  supSel.innerHTML = '';
+  const blank = document.createElement('option');
+  blank.value = ''; blank.id = 'opt-sel'; blank.textContent = T[lang]['opt-sel'];
+  supSel.appendChild(blank);
+  fillSelect('sel-supervisor', supervisors);
+  supSel.disabled = false;
+}
+
+let optionsCachedAt = null; // set when the form fell back to the cached options
+
+function showOptionsWarn() {
+  const w = document.getElementById('optionsWarn');
+  if (!w) return;
+  const t = T[lang];
+  w.textContent = optionsCachedAt
+    ? t.optionsCachedMsg(localTimeString(new Date(optionsCachedAt)).replace(/ \(.*\)$/, ''))
+    : t.optionsWarnMsg;
+  w.style.display = 'block';
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  // Without a timeout a weak site signal can leave "Loading..." up forever
+  // instead of falling back to the cached options.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
   try {
-    const res = await fetch(CFG.OPTIONS_URL);
-    if (!res.ok) throw new Error('options fetch failed');
+    const res = await fetch(CFG.OPTIONS_URL, { signal: ctrl.signal });
+    if (!res.ok) throw new Error('options fetch failed: HTTP ' + res.status);
     const csv = await res.text();
-    const supervisors = [];
-    parseCSV(csv).slice(1).forEach(row => {
-      const cols = row.map(s => s.trim());
-      const [name, type, enabled, email, parent, notionLink] = cols;
-      if (!name || enabled !== 'TRUE') return;
-      if (type === '監工人員') {
-        supervisors.push(name);
-        if (email) supervisorEmailMap[name] = email;
-      } else if (type === '施工廠商') {
-        const key = parent || '';
-        if (!contractorsByEngineer[key]) contractorsByEngineer[key] = [];
-        contractorsByEngineer[key].push(name);
-      } else if (type === '工程名稱') {
-        const key = parent || '';
-        if (!projectsByContractor[key]) projectsByContractor[key] = [];
-        projectsByContractor[key].push(name);
-        // 6th CSV column: "Notion工程連結" — the project's Work Item page in
-        // Notion, used server-side to auto-link the daily log's Related Work Item.
-        if (notionLink) projectNotionUrlMap[name] = notionLink;
-      }
-    });
-    // Replace the "Loading options..." placeholder now that the hierarchy is
-    // ready — the select stays disabled up to this point so a fast tap can't
-    // pick a supervisor before contractorsByEngineer/projectsByContractor are
-    // populated (that race left the contractor/project lists empty).
-    const supSel = document.getElementById('sel-supervisor');
-    supSel.innerHTML = '';
-    const blank = document.createElement('option');
-    blank.value = ''; blank.id = 'opt-sel'; blank.textContent = T[lang]['opt-sel'];
-    supSel.appendChild(blank);
-    fillSelect('sel-supervisor', supervisors);
-    supSel.disabled = false;
+    enableSupervisorSelect(applyOptionsCsv(csv));
+    try { localStorage.setItem(OPTIONS_CACHE_KEY, JSON.stringify({ csv, at: Date.now() })); } catch (e) {}
   } catch (e) {
-    console.warn('[form-options] fetch failed, using empty lists:', e.message);
-    reportError('options_load_failed', e.message);
-    const supSel = document.getElementById('sel-supervisor');
-    supSel.innerHTML = '';
-    const blank = document.createElement('option');
-    blank.value = ''; blank.id = 'opt-sel'; blank.textContent = T[lang]['opt-sel'];
-    supSel.appendChild(blank);
-    supSel.disabled = false;
-    const w = document.getElementById('optionsWarn');
-    if (w) { w.textContent = T[lang].optionsWarnMsg; w.style.display = 'block'; }
+    const msg = e.name === 'AbortError' ? 'options fetch timed out (15s)' : e.message;
+    console.warn('[form-options] fetch failed:', msg);
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(OPTIONS_CACHE_KEY) || 'null'); } catch (err) {}
+    if (cached && cached.csv) {
+      optionsCachedAt = cached.at;
+      enableSupervisorSelect(applyOptionsCsv(cached.csv));
+      reportError('options_load_failed', msg + ' (using cached options)');
+    } else {
+      enableSupervisorSelect([]);
+      reportError('options_load_failed', msg);
+    }
+    showOptionsWarn();
+  } finally {
+    clearTimeout(timer);
   }
+  applyLastSelection();
 });
+
+// ── Pre-fill from the last report ──────────────────────────
+// Supervisor, contractor and project(s) of the last report sent from this phone
+// are filled in automatically; everything else starts empty. A restored draft
+// overrides this (the user chooses that from the draft banner).
+const LAST_SEL_KEY = 'wl_last_selection';
+
+function saveLastSelection(raw) {
+  try {
+    localStorage.setItem(LAST_SEL_KEY, JSON.stringify({
+      supervisor: raw.supervisor || '', contractor: raw.contractor || '', projects: selectedProjects.slice()
+    }));
+  } catch (e) {}
+}
+
+function applyLastSelection() {
+  let last = null;
+  try { last = JSON.parse(localStorage.getItem(LAST_SEL_KEY) || 'null'); } catch (e) {}
+  const supSel = document.getElementById('sel-supervisor');
+  if (!last || !last.supervisor || supSel.value) return;
+  // Options removed or renamed in the Google Sheet since then are skipped.
+  if (!Array.from(supSel.options).some(o => o.value === last.supervisor)) return;
+  supSel.value = last.supervisor;
+  populateContractorOptions(last.supervisor);
+  if (!(contractorsByEngineer[last.supervisor] || []).includes(last.contractor)) return;
+  document.getElementById('sel-contractor').value = last.contractor;
+  populateProjectOptions(last.contractor);
+  selectedProjects = (last.projects || []).filter(p => currentProjectOptions.includes(p));
+  updateProjectSummary();
+}
 
 // ── Cascading filters: supervisor → contractor → project (multi-select) ────
 let currentProjectOptions = [];
@@ -750,7 +868,7 @@ const T = {
     'l-tomorrowPlan': 'Planned Work for Tomorrow',
     'h-tomorrowPlan': "Describe tomorrow's planned tasks",
     'l-workers': 'Number of Workers',
-    'h-workers': 'Total workers on site today (whole number)',
+    'h-workers': 'Total workers on site today (0 if work stopped)',
     'l-materialsUsed': 'Materials Used',
     'l-equipment': 'Equipment Used',
     'l-communication': 'Communication with Contractor',
@@ -759,8 +877,20 @@ const T = {
     'l-qualityInspection': 'Quality & Quantity Inspection',
     'l-photoLabel': 'Tap to upload photos (max 10)',
     'opt-sel': '-- Select --',
-    'w-sunny-1': '☀️ Sunny', 'w-rainy-1': '🌧️ Rainy',
-    'w-sunny-2': '☀️ Sunny', 'w-rainy-2': '🌧️ Rainy',
+    'w-sunny-1': '☀️ Sunny', 'w-rainy-1': '🌧️ Rain', 'w-heavyRain-1': '🌧️🌧️ Heavy rain', 'w-strongWind-1': '💨 Strong wind', 'w-thunderstorm-1': '⛈️ Thunderstorm',
+    'w-sunny-2': '☀️ Sunny', 'w-rainy-2': '🌧️ Rain', 'w-heavyRain-2': '🌧️🌧️ Heavy rain', 'w-strongWind-2': '💨 Strong wind', 'w-thunderstorm-2': '⛈️ Thunderstorm',
+    'h-weather': 'If several happen, pick the most severe: Thunderstorm > Heavy rain > Strong wind > Rain > Sunny',
+    secHz: 'Safety',
+    'l-hazardWork': 'Hazardous Work Today',
+    'h-hazardWork': 'Tick every type done today, or "No hazardous work"',
+    'hz-none': '✅ No hazardous work',
+    'hz-hotWork': '🔥 Hot work',
+    'hz-lifting': '🏗️ Lifting',
+    'hz-height': '🪜 Work at height',
+    'hz-confinedSpace': '🕳️ Confined space',
+    dateLate: (d) => `⚠️ Late entry for ${d}`,
+    optionsCachedMsg: (t) => `⚠️ Could not load the latest options — using the options saved on this phone (${t}). If an option is missing, check your connection and reopen the form.`,
+    submitTimeout: 'Sending the report timed out. Please check your connection and tap "Resubmit".',
     'i-constructionArea': 'e.g. Building A, Zone 3',
     'i-contractor': 'Enter contractor name',
     'i-workers': '',
@@ -829,7 +959,7 @@ const T = {
     'l-tomorrowPlan': 'แผนงานพรุ่งนี้',
     'h-tomorrowPlan': 'ระบุงานที่วางแผนสำหรับพรุ่งนี้',
     'l-workers': 'จำนวนคนงาน',
-    'h-workers': 'จำนวนคนงานทั้งหมดวันนี้ (จำนวนเต็ม)',
+    'h-workers': 'จำนวนคนงานทั้งหมดวันนี้ (หยุดงานใส่ 0 ได้)',
     'l-materialsUsed': 'วัสดุที่ใช้',
     'l-equipment': 'เครื่องจักรและเครื่องมือที่ใช้',
     'l-communication': 'บันทึกการประสานงานกับผู้รับเหมา',
@@ -838,8 +968,20 @@ const T = {
     'l-qualityInspection': 'บันทึกการตรวจสอบคุณภาพและปริมาณ',
     'l-photoLabel': 'แตะเพื่ออัปโหลดรูปภาพ (สูงสุด 10 รูป)',
     'opt-sel': '-- เลือก --',
-    'w-sunny-1': '☀️ แดดออก', 'w-rainy-1': '🌧️ ฝนตก',
-    'w-sunny-2': '☀️ แดดออก', 'w-rainy-2': '🌧️ ฝนตก',
+    'w-sunny-1': '☀️ แดดออก', 'w-rainy-1': '🌧️ ฝนตก', 'w-heavyRain-1': '🌧️🌧️ ฝนตกหนัก', 'w-strongWind-1': '💨 ลมแรง', 'w-thunderstorm-1': '⛈️ พายุฝนฟ้าคะนอง',
+    'w-sunny-2': '☀️ แดดออก', 'w-rainy-2': '🌧️ ฝนตก', 'w-heavyRain-2': '🌧️🌧️ ฝนตกหนัก', 'w-strongWind-2': '💨 ลมแรง', 'w-thunderstorm-2': '⛈️ พายุฝนฟ้าคะนอง',
+    'h-weather': 'หากเกิดหลายอย่าง ให้เลือกที่รุนแรงที่สุด: พายุฝนฟ้าคะนอง > ฝนตกหนัก > ลมแรง > ฝนตก > แดดออก',
+    secHz: 'ความปลอดภัย',
+    'l-hazardWork': 'งานอันตรายวันนี้',
+    'h-hazardWork': 'เลือกทุกประเภทที่ทำวันนี้ หรือเลือก "ไม่มีงานอันตราย"',
+    'hz-none': '✅ ไม่มีงานอันตราย',
+    'hz-hotWork': '🔥 งานที่ก่อให้เกิดประกายไฟ',
+    'hz-lifting': '🏗️ งานยก',
+    'hz-height': '🪜 งานบนที่สูง',
+    'hz-confinedSpace': '🕳️ งานในที่อับอากาศ',
+    dateLate: (d) => `⚠️ บันทึกย้อนหลังของวันที่ ${d}`,
+    optionsCachedMsg: (t) => `⚠️ โหลดตัวเลือกล่าสุดไม่สำเร็จ กำลังใช้ตัวเลือกที่บันทึกไว้ในโทรศัพท์ (${t}) หากไม่พบตัวเลือกที่ต้องการ กรุณาตรวจสอบอินเทอร์เน็ตแล้วเปิดแบบฟอร์มใหม่`,
+    submitTimeout: 'ส่งรายงานนานเกินไป กรุณาตรวจสอบอินเทอร์เน็ตแล้วกด "ส่งใหม่อีกครั้ง"',
     'i-constructionArea': 'เช่น อาคาร A โซน 3',
     'i-contractor': 'ระบุชื่อผู้รับเหมา',
     'i-workers': '',
@@ -908,7 +1050,7 @@ const T = {
     'l-tomorrowPlan': '明日預計工作',
     'h-tomorrowPlan': '填寫明日計劃進行的工作',
     'l-workers': '出工人數',
-    'h-workers': '今日現場工人總人數（正整數）',
+    'h-workers': '今日現場工人總人數（停工可填 0）',
     'l-materialsUsed': '供給材料使用',
     'l-equipment': '機具使用',
     'l-communication': '與廠商溝通協調記錄',
@@ -917,8 +1059,20 @@ const T = {
     'l-qualityInspection': '品質、數量檢查記錄',
     'l-photoLabel': '點擊上傳現場照片（最多 10 張）',
     'opt-sel': '-- 請選擇 --',
-    'w-sunny-1': '☀️ 晴天', 'w-rainy-1': '🌧️ 下雨',
-    'w-sunny-2': '☀️ 晴天', 'w-rainy-2': '🌧️ 下雨',
+    'w-sunny-1': '☀️ 晴天', 'w-rainy-1': '🌧️ 下雨', 'w-heavyRain-1': '🌧️🌧️ 大雨', 'w-strongWind-1': '💨 強風', 'w-thunderstorm-1': '⛈️ 雷雨',
+    'w-sunny-2': '☀️ 晴天', 'w-rainy-2': '🌧️ 下雨', 'w-heavyRain-2': '🌧️🌧️ 大雨', 'w-strongWind-2': '💨 強風', 'w-thunderstorm-2': '⛈️ 雷雨',
+    'h-weather': '同時發生時選最嚴重的：雷雨 > 大雨 > 強風 > 下雨 > 晴天',
+    secHz: '工安',
+    'l-hazardWork': '今日危險作業',
+    'h-hazardWork': '勾選今天有進行的所有危險作業，沒有請勾「無危險作業」',
+    'hz-none': '✅ 無危險作業',
+    'hz-hotWork': '🔥 動火作業',
+    'hz-lifting': '🏗️ 吊裝作業',
+    'hz-height': '🪜 高空作業',
+    'hz-confinedSpace': '🕳️ 局限空間作業',
+    dateLate: (d) => `⚠️ 補填 ${d} 的日誌`,
+    optionsCachedMsg: (t) => `⚠️ 無法載入最新選項，目前使用這支手機上次儲存的選項（${t}）。若找不到需要的選項，請確認網路後重新開啟表單。`,
+    submitTimeout: '送出報告逾時，請確認網路後按「重新送出」。',
     'i-constructionArea': '例如：A棟、3區',
     'i-contractor': '輸入廠商名稱',
     'i-workers': '',
@@ -1089,7 +1243,7 @@ async function checkForUpdate() {
 document.addEventListener('DOMContentLoaded', async () => {
   applyFontScale();
   applyLang();
-  document.querySelector('[name="date"]').value = new Date().toISOString().split('T')[0];
+  initDateField();
   document.getElementById('appVersion').textContent = 'v' + APP_VERSION;
   checkForUpdate();
   checkDraft();
@@ -1164,7 +1318,9 @@ function applyLang() {
     'l-workers','h-workers',
     'l-materialsUsed','l-equipment','l-communication','l-otherNotes',
     'l-samplingTests','l-qualityInspection','l-photoLabel',
-    'opt-sel','w-sunny-1','w-rainy-1','w-sunny-2','w-rainy-2',
+    'opt-sel','h-weather','secHz','l-hazardWork','h-hazardWork',
+    ...['sunny','rainy','heavyRain','strongWind','thunderstorm'].flatMap(c => ['w-' + c + '-1', 'w-' + c + '-2']),
+    ...HAZARD_CODES.map(c => 'hz-' + c),
     'submitLabel','successTitle','successMsg','errorTitle','errorMsg','retryBtn','errorBackBtn','langBtn',
     'progressTitle','step-photos-label','step-submit-label','step-process-label',
     'confirmTitleLbl','confirmSendBtn','confirmBackBtn','confirmNotice','skipPhotosBtn','errorReported',
@@ -1180,14 +1336,71 @@ function applyLang() {
   // Top banners set their text once when shown, so re-render them here or
   // they stay in whichever language was active at that moment.
   if (pendingDraft && document.getElementById('draftBanner').style.display !== 'none') renderDraftBanner();
-  if (lastPhotoFail) renderErrorDetail();
+  if (lastPhotoFail || lastSubmitTimedOut) renderErrorDetail();
   const optWarn = document.getElementById('optionsWarn');
-  if (optWarn && optWarn.style.display !== 'none') optWarn.textContent = t.optionsWarnMsg;
+  if (optWarn && optWarn.style.display !== 'none') showOptionsWarn();
+  updateDateHint();
   // Placeholders
   ['i-constructionArea','i-workers','i-date'].forEach(id => {
     const el = document.getElementById(id);
     if (el && t[id] !== undefined) el.placeholder = t[id];
   });
+}
+
+// ── Date ──────────────────────────────────────────────────
+// Defaults to today on the phone. It can still be changed (a log filled in the
+// next morning picks yesterday), but not to a future day; any earlier day shows
+// a "late entry" note so a wrong pick is noticed.
+function initDateField() {
+  const el = document.getElementById('i-date');
+  el.value = localDateStr();
+  el.max = localDateStr();
+  el.addEventListener('change', updateDateHint);
+  el.addEventListener('input', updateDateHint);
+  updateDateHint();
+}
+
+function updateDateHint() {
+  const el = document.getElementById('i-date');
+  const hint = document.getElementById('dateLateHint');
+  if (!el || !hint) return;
+  const late = el.value && el.value < localDateStr();
+  hint.textContent = late ? T[lang].dateLate(el.value) : '';
+  hint.style.display = late ? 'block' : 'none';
+}
+
+// ── Hazardous work ────────────────────────────────────────
+// "No hazardous work" and the hazard types exclude each other. The checked
+// codes are kept in the hidden hazardWork input so they go through the same
+// FormData path as every other field (draft autosave, validation, payload).
+function syncHazardHidden() {
+  const codes = Array.from(document.querySelectorAll('.hz-chk')).filter(c => c.checked).map(c => c.value);
+  document.getElementById('hidden-hazardWork').value = codes.join(',');
+  document.querySelectorAll('.hz-chk').forEach(c => c.closest('.hz-item').classList.toggle('checked', c.checked));
+  if (codes.length) document.getElementById('f-hazardWork').classList.remove('err');
+}
+
+function setHazardChecks(value) {
+  const codes = String(value || '').split(',').filter(Boolean);
+  document.querySelectorAll('.hz-chk').forEach(c => { c.checked = codes.includes(c.value); });
+  syncHazardHidden();
+}
+
+document.querySelectorAll('.hz-chk').forEach(chk => {
+  chk.addEventListener('change', () => {
+    if (chk.checked) {
+      document.querySelectorAll('.hz-chk').forEach(c => {
+        if (c !== chk && (chk.value === 'none' || c.value === 'none')) c.checked = false;
+      });
+    }
+    syncHazardHidden();
+  });
+});
+
+function hazardText(value) {
+  const t = T[lang];
+  const codes = String(value || '').split(',').filter(Boolean);
+  return codes.length ? codes.map(c => t['hz-' + c] || c).join('\n') : '';
 }
 
 // ── Photos ────────────────────────────────────────────────
@@ -1370,7 +1583,7 @@ async function uploadPhoto(b64, fileName, projectName) {
 }
 
 // ── Validation ────────────────────────────────────────────
-const REQUIRED = ['supervisor','projectName','constructionArea','contractor','date','morningWeather','afternoonWeather','constructionLocation','constructionItems','workers'];
+const REQUIRED = ['supervisor','projectName','constructionArea','contractor','date','morningWeather','afternoonWeather','hazardWork','constructionLocation','constructionItems','workers'];
 
 function validate(data) {
   let ok = true;
@@ -1380,8 +1593,9 @@ function validate(data) {
     let invalid = !data[name] || String(data[name]).trim() === '';
     if (!invalid && name === 'workers') {
       const v = Number(data[name]);
-      invalid = !Number.isInteger(v) || v < 1;
+      invalid = !Number.isInteger(v) || v < 0;
     }
+    if (!invalid && name === 'date') invalid = String(data[name]) > localDateStr();
     if (invalid) {
       if (el) el.classList.add('err');
       ok = false;
@@ -1471,6 +1685,8 @@ function applyDraftToForm(draft) {
     const el = form.elements.namedItem(k);
     if (el) el.value = draft[k];
   });
+  setHazardChecks(draft.hazardWork);
+  updateDateHint();
   // supervisor/contractor selects don't fire 'change' from a direct .value
   // assignment, so the cascading contractor/project lists need a manual rebuild.
   populateContractorOptions(document.getElementById('sel-supervisor').value);
@@ -1515,7 +1731,7 @@ document.getElementById('theForm').addEventListener('input', debounce(saveDraft,
 // ── Confirm screen ───────────────────────────────────────────
 const CONFIRM_FIELDS = [
   'supervisor','projectName','constructionArea','contractor','date',
-  'morningWeather','afternoonWeather',
+  'morningWeather','afternoonWeather','hazardWork',
   'constructionLocation','constructionItems','tomorrowPlan','workers',
   'materialsUsed','equipment','communication','otherNotes',
   'samplingTests','qualityInspection'
@@ -1523,15 +1739,20 @@ const CONFIRM_FIELDS = [
 let pendingRaw = null;
 let photoNamePrefix = null; // set on first upload attempt of a report
 let submissionId = null;
+let filledAt = null; // when the user first tapped Submit for this report (phone time)
 let submitInFlight = false; // blocks a double tap on "Confirm & Send"
 
 function showConfirmScreen(raw) {
   const t = T[lang];
-  const weatherText = v => v === 'sunny' ? '☀️' : v === 'rainy' ? '🌧️' : '-';
+  const weatherText = v => (v && t['w-' + v + '-1']) || v || '-';
   const rows = CONFIRM_FIELDS.map(key => {
-    const label = t['l-' + key] || key;
+    const label = key === 'morningWeather' ? t['l-morning']
+      : key === 'afternoonWeather' ? t['l-afternoon']
+      : (t['l-' + key] || key);
     let value = raw[key];
     if (key === 'morningWeather' || key === 'afternoonWeather') value = weatherText(value);
+    if (key === 'hazardWork') value = hazardText(value);
+    if (key === 'date' && value && value < localDateStr()) value += '\n' + t.dateLate(value);
     value = (value === undefined || value === null || value === '') ? '-' : String(value);
     const safe = value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<div class="confirm-row"><div class="confirm-label">${label}</div><div class="confirm-value">${safe}</div></div>`;
@@ -1552,6 +1773,7 @@ document.getElementById('theForm').addEventListener('submit', e => {
   // One ID per report: kept across "Resubmit" so n8n can drop a report it
   // already received (e.g. the reply was lost on a flaky connection).
   submissionId = (crypto.randomUUID && crypto.randomUUID()) || (Date.now().toString(36) + Math.random().toString(36).slice(2));
+  filledAt = new Date();
   showConfirmScreen(raw);
 });
 
@@ -1606,13 +1828,14 @@ async function uploadAllPhotos(files, namePrefix, projectName, onProgress) {
 }
 
 let lastPhotoFail = null; // { failed, total, reason } of the last attempt, for the error screen
+let lastSubmitTimedOut = false;
 
 function renderErrorDetail() {
   const el = document.getElementById('errorDetail');
   el.textContent = lastPhotoFail
     ? T[lang].photoFailBlock(lastPhotoFail.failed, lastPhotoFail.total) + (lastPhotoFail.reason ? `\n(${lastPhotoFail.reason})` : '')
-    : '';
-  el.style.display = lastPhotoFail ? 'block' : 'none';
+    : lastSubmitTimedOut ? T[lang].submitTimeout : '';
+  el.style.display = (lastPhotoFail || lastSubmitTimedOut) ? 'block' : 'none';
   document.getElementById('skipPhotosBtn').style.display = lastPhotoFail ? 'block' : 'none';
 }
 
@@ -1651,6 +1874,7 @@ async function proceedSubmit() {
   const skipFailed = skipFailedPhotosOnce;
   skipFailedPhotosOnce = false;
   lastPhotoFail = null;
+  lastSubmitTimedOut = false;
   renderErrorDetail();
   try {
     // Step 1: upload photos in parallel with retry — real, count-based progress
@@ -1708,16 +1932,25 @@ async function proceedSubmit() {
       submissionId,
       language: lang,
       submittedAt: new Date().toISOString(),
+      // Phone-local fill-in time, shown as-is in the PDF / LINE / Notion so the
+      // server's own time zone never matters.
+      filledAtLocal: localTimeString(filledAt || new Date()),
+      filledDate: localDateStr(filledAt || new Date()),
       photoUrls,
       photoCount: photoUrls.length,
       skippedPhotoCount,
       notionProjectUrls: selectedProjects.map(p => projectNotionUrlMap[p] || ''),
     };
+    // Timeout so a stalled connection fails into the error screen ("Resubmit"
+    // reuses the submissionId, so n8n drops a copy that did get through).
+    const submitCtrl = new AbortController();
+    const submitTimer = setTimeout(() => submitCtrl.abort(), 60000);
     const fetchPromise = fetch(CFG.N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+      body: JSON.stringify(payload),
+      signal: submitCtrl.signal
+    }).finally(() => clearTimeout(submitTimer));
     setStep('submit', 'done');
     setProgress(photoSpan + 5);
 
@@ -1735,13 +1968,21 @@ async function proceedSubmit() {
       setProgress(currentPct + (PROCESS_CAP - currentPct) * 0.12);
     }, 500);
 
-    const res = await fetchPromise;
+    let res;
+    try { res = await fetchPromise; }
+    catch (e) {
+      if (e.name !== 'AbortError') throw e;
+      lastSubmitTimedOut = true;
+      renderErrorDetail();
+      throw new Error('submit timed out (60s)');
+    }
     clearInterval(processInterval);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     setStep('process', 'done');
     setProgress(100);
 
     clearDraft();
+    saveLastSelection(raw);
     setTimeout(() => showScreen('successScreen'), 400);
   } catch (err) {
     console.error('Submit error:', err);

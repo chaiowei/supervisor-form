@@ -1,9 +1,9 @@
-const d = $('Prepare Data').first().json;
-const genNode = $('Generate PDF HTML').first().json;
+const d = $('Prepare Data1').first().json;
+const genNode = $('Generate PDF HTML1').first().json;
 const dZH = genNode.translatedZH || d;
 const translationFailed = genNode.geminiStatus !== 'success';
-const variantOrigins = $('Split Out').all();
-const driveUploads = $('Google Drive Upload').all();
+const variantOrigins = $('Split Out1').all();
+const driveUploads = $('Google Drive Upload1').all();
 const idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);
 const driveFileId = driveUploads[idxOf('contractor')].json.id;
 const driveUrl = 'https://drive.google.com/file/d/' + driveFileId + '/view';
@@ -13,24 +13,29 @@ const driveUrlZH = 'https://drive.google.com/file/d/' + driveFileIdZH + '/view';
 // link the new Notion page. That node continues on fail — if it errored (or
 // didn't run), there's simply no Notion button.
 let notionUrl = '';
+let notionError = '';
 try {
-  const n = $('Notion: Create Daily Log').first().json;
+  const n = $('Notion: Create Daily Log1').first().json;
   if (n && !n.error && n.id) notionUrl = n.url || ('https://www.notion.so/' + String(n.id).replace(/-/g, ''));
-} catch (e) { notionUrl = ''; }
+  else notionError = String((n && n.error && (n.error.message || n.error.description || JSON.stringify(n.error))) || 'no page created').slice(0, 200);
+} catch (e) { notionError = 'Notion node did not run'; }
 const lang = d.language || 'en';
-const W = { en: { sunny: '☀️ Sunny', rainy: '🌧️ Rainy' }, th: { sunny: '☀️ แดดออก', rainy: '🌧️ ฝนตก' }, zh: { sunny: '☀️ 晴天', rainy: '🌧️ 下雨' } };
-const wC = W[lang] || W.en;
-const mW = wC[d.morningWeather] || d.morningWeather || '-';
-const aW = wC[d.afternoonWeather] || d.afternoonWeather || '-';
-const mWZH = W.zh[d.morningWeather] || d.morningWeather || '-';
-const aWZH = W.zh[d.afternoonWeather] || d.afternoonWeather || '-';
+// Weather / hazardous-work labels are built once in Prepare Data
+const lbC = (d.labels && d.labels.contractor) || {};
+const lbZ = (d.labels && d.labels.zh) || {};
+const mW = lbC.mW || '-', aW = lbC.aW || '-';
+const mWZH = lbZ.mW || '-', aWZH = lbZ.aW || '-';
 const CL = {
-  en: { title: '✅ Work Report Submitted', morning: 'AM', afternoon: 'PM', date: 'Date', project: 'Project', area: 'Area', weather: 'Weather', workers: 'Workers', location: '📍 Location', workDone: '🔨 Work Done', tomorrow: '📋 Tomorrow Plan', materials: '🧱 Materials', equipment: '⚙️ Equipment', comms: '💬 Communication', notes: '📝 Notes', sampling: '🧪 Sampling', quality: '✔️ Quality Check', download: '📥 Download PDF', share: '📤 Share', shareTitle: 'Daily Work Log', notion: '📒 Open Notion Page' },
-  th: { title: '✅ ส่งรายงานสำเร็จ', morning: 'เช้า', afternoon: 'บ่าย', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', weather: 'อากาศ', workers: 'คนงาน', location: '📍 ตำแหน่ง', workDone: '🔨 งานวันนี้', tomorrow: '📋 แผนพรุ่งนี้', materials: '🧱 วัสดุ', equipment: '⚙️ เครื่องมือ', comms: '💬 ประสานงาน', notes: '📝 หมายเหตุ', sampling: '🧪 ตัวอย่าง', quality: '✔️ ตรวจสอบ', download: '📥 ดาวน์โหลด PDF', share: '📤 แชร์', shareTitle: 'บันทึกงานประจำวัน', notion: '📒 เปิดหน้า Notion' },
-  zh: { title: '✅ 監工日誌已送出', morning: '上午', afternoon: '下午', date: '日期', project: '工程', area: '廠區', weather: '天氣', workers: '出工人數', location: '📍 施工部位', workDone: '🔨 今日施工', tomorrow: '📋 明日計畫', materials: '🧱 材料', equipment: '⚙️ 機具', comms: '💬 溝通記錄', notes: '📝 其他備注', sampling: '🧪 取樣記錄', quality: '✔️ 品質檢查', download: '📥 下載 PDF', share: '📤 分享', shareTitle: '監工日誌', notion: '📒 開啟 Notion 頁面' }
+  en: { title: '✅ Work Report Submitted', morning: 'AM', afternoon: 'PM', date: 'Date', project: 'Project', area: 'Area', weather: 'Weather', workers: 'Workers', location: '📍 Location', workDone: '🔨 Work Done', tomorrow: '📋 Tomorrow Plan', materials: '🧱 Materials', equipment: '⚙️ Equipment', comms: '💬 Communication', notes: '📝 Notes', sampling: '🧪 Sampling', quality: '✔️ Quality Check', download: '📥 Download PDF', share: '📤 Share', shareTitle: 'Daily Work Log', notion: '📒 Open Notion Page', hazard: '🦺 Hazardous work', filled: 'Filled in', late: '(late entry)' },
+  th: { title: '✅ ส่งรายงานสำเร็จ', morning: 'เช้า', afternoon: 'บ่าย', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', weather: 'อากาศ', workers: 'คนงาน', location: '📍 ตำแหน่ง', workDone: '🔨 งานวันนี้', tomorrow: '📋 แผนพรุ่งนี้', materials: '🧱 วัสดุ', equipment: '⚙️ เครื่องมือ', comms: '💬 ประสานงาน', notes: '📝 หมายเหตุ', sampling: '🧪 ตัวอย่าง', quality: '✔️ ตรวจสอบ', download: '📥 ดาวน์โหลด PDF', share: '📤 แชร์', shareTitle: 'บันทึกงานประจำวัน', notion: '📒 เปิดหน้า Notion', hazard: '🦺 งานอันตราย', filled: 'กรอกเมื่อ', late: '(บันทึกย้อนหลัง)' },
+  zh: { title: '✅ 監工日誌已送出', morning: '上午', afternoon: '下午', date: '日期', project: '工程', area: '廠區', weather: '天氣', workers: '出工人數', location: '📍 施工部位', workDone: '🔨 今日施工', tomorrow: '📋 明日計畫', materials: '🧱 材料', equipment: '⚙️ 機具', comms: '💬 溝通記錄', notes: '📝 其他備注', sampling: '🧪 取樣記錄', quality: '✔️ 品質檢查', download: '📥 下載 PDF', share: '📤 分享', shareTitle: '監工日誌', notion: '📒 開啟 Notion 頁面', hazard: '🦺 危險作業', filled: '填寫時間', late: '（補填）', notionFail: '⚠️ Notion 寫入失敗，請到 n8n Executions 查看' }
 };
 const cl = CL[lang] || CL.en;
-const clZH = translationFailed ? { ...CL.zh, title: '⚠️翻譯失敗(原文) ' + CL.zh.title } : CL.zh;
+// Jerry's title calls out hazardous work and failed translation up front
+let titleZH = CL.zh.title;
+if (lbZ.risk) titleZH = `⚠️ 危險作業：${lbZ.risk}｜` + titleZH;
+if (translationFailed) titleZH = '⚠️翻譯失敗(原文) ' + titleZH;
+const clZH = { ...CL.zh, title: titleZH };
 const trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';
 function kv(label, value) {
   return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };
@@ -52,13 +57,18 @@ function shareUri(cl, data, pdfUrl) {
   const uri = 'https://line.me/R/share?text=' + encodeURIComponent(full);
   return uri.length <= 1000 ? uri : 'https://line.me/R/share?text=' + encodeURIComponent(head + '\n' + tail);
 }
-function buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor, notionLink) {
+function buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor, notionLink, lb, extra = {}) {
+  const hazardKv = kv(cl.hazard, lb.hazard || '-');
+  if (lb.risk) { hazardKv.contents[1].color = '#c53030'; hazardKv.contents[1].weight = 'bold'; }
   const body = [
-    kv(cl.date, data.date + ' (' + data.weekday + ')'),
+    kv(cl.date, data.date + ' (' + data.weekday + ')' + (data.lateEntry ? ' ' + cl.late : '')),
     kv(cl.project, trunc(data.projectName, 50)),
     kv(cl.area, trunc(data.constructionArea, 50)),
     kv(cl.weather, cl.morning + ': ' + mWeather + '  ' + cl.afternoon + ': ' + aWeather),
-    kv(cl.workers, String(data.workers || '-')),
+    kv(cl.workers, String(data.workers ?? '-')),
+    hazardKv,
+    ...(extra.showFilled ? [kv(cl.filled, data.filledAtShort || '-')] : []),
+    ...(extra.warning ? [{ type: 'text', text: extra.warning, size: 'xs', color: '#c53030', weight: 'bold', wrap: true, margin: 'sm' }] : []),
     sep(),
     lbl(cl.location), txt(trunc(data.constructionLocation, 150)),
     sep(),
@@ -87,14 +97,15 @@ function buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor, notionLink
   };
 }
 // Contractor: download + share. Jerry: download + share + Notion page.
-const contractorBubble = buildFlex(cl, d, mW, aW, driveUrl, '#1a73e8', '');
-const jerryBubble = buildFlex(clZH, dZH, mWZH, aWZH, driveUrlZH, translationFailed ? '#e53e3e' : '#0d7a0d', notionUrl);
+const contractorBubble = buildFlex(cl, d, mW, aW, driveUrl, '#1a73e8', '', lbC);
+const jerryBubble = buildFlex(clZH, dZH, mWZH, aWZH, driveUrlZH, translationFailed ? '#e53e3e' : '#0d7a0d', notionUrl, lbZ,
+  { showFilled: true, warning: notionError ? CL.zh.notionFail : '' });
 const contractorFlex = { to: d.lineUserId, messages: [{ type: 'flex', altText: cl.title, contents: contractorBubble }] };
 const jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: clZH.title, contents: jerryBubble }] };
 function escHtml(s) { return String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 const JERRY_EMAIL = 'jerry_hsieh@eco-infinic.com';
 const recipientEmail = (d.supervisorEmail || '').trim() || JERRY_EMAIL;
 const isJerry = recipientEmail.toLowerCase() === JERRY_EMAIL.toLowerCase();
-const emailSubject = `${translationFailed ? '⚠️翻譯失敗(原文) - ' : ''}監工日誌通知 - ${d.projectName || ''} - ${d.date || ''}`;
-const emailHtml = `${translationFailed ? '<p style="color:#e53e3e;font-weight:bold">⚠️ 自動翻譯失敗，本次中文版PDF內容為原文（非正式翻譯），請人工確認後再轉發。</p>' : ''}<p>負責工程師 <b>${escHtml(d.supervisor)}</b> 提交了新的監工日誌。</p><p>工程：${escHtml(d.projectName)}<br>廠區：${escHtml(d.constructionArea)}<br>日期：${escHtml(d.date)}（${escHtml(dZH.weekday)}）<br>廠商：${escHtml(d.contractor)}</p><p><a href="${driveUrlZH}">📥 下載中文版 PDF 報告</a>${notionUrl ? `<br><a href="${notionUrl}">📒 開啟 Notion 頁面</a>` : ''}</p>`;
+const emailSubject = `${translationFailed ? '⚠️翻譯失敗(原文) - ' : ''}${lbZ.risk ? `⚠️危險作業：${lbZ.risk} - ` : ''}監工日誌通知 - ${d.projectName || ''} - ${d.date || ''}`;
+const emailHtml = `${translationFailed ? '<p style="color:#e53e3e;font-weight:bold">⚠️ 自動翻譯失敗，本次中文版PDF內容為原文（非正式翻譯），請人工確認後再轉發。</p>' : ''}<p>負責工程師 <b>${escHtml(d.supervisor)}</b> 提交了新的監工日誌。</p><p>工程：${escHtml(d.projectName)}<br>廠區：${escHtml(d.constructionArea)}<br>日期：${escHtml(d.date)}（${escHtml(dZH.weekday)}）${d.lateEntry ? '<b style="color:#a05a00">（補填）</b>' : ''}<br>廠商：${escHtml(d.contractor)}<br>今日危險作業：${lbZ.risk ? `<b style="color:#c53030">⚠️ ${escHtml(lbZ.hazard)}</b>` : escHtml(lbZ.hazard)}<br>填寫時間：${escHtml(d.filledAtShort)}</p>${notionError ? `<p style="color:#c53030;font-weight:bold">⚠️ Notion 寫入失敗：${escHtml(notionError)}</p>` : ''}<p><a href="${driveUrlZH}">📥 下載中文版 PDF 報告</a>${notionUrl ? `<br><a href="${notionUrl}">📒 開啟 Notion 頁面</a>` : ''}</p>`;
 return [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex), isJerry, recipientEmail, emailSubject, emailHtml } }];
