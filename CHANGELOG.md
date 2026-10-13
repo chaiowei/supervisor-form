@@ -3,11 +3,11 @@
 ## 2026-10-13
 
 ### 填寫者遇到的錯誤自動回報給 Jerry
-- 表單上發生的錯誤會自動送到新的 n8n 流程 `Supervisor Form Error Report`（webhook `supervisor-form-error`），再用 LINE 傳給 Jerry。訊息內容包含：填寫者、廠商、工程、錯誤原因、失敗照片的檔名／格式／大小、手機型號。
+- 表單上發生的錯誤會自動送到 n8n 流程 `Supervisor Error Notification` 新增的 webhook `supervisor-form-error`，再用 LINE 傳給 Jerry（原本的 n8n 流程錯誤通知保留，兩者在同一個流程裡）。訊息內容包含：填寫者、廠商、工程、錯誤原因、失敗照片的檔名／格式／大小、手機型號。
 - 會回報的錯誤：照片上傳失敗、照片無法讀取、使用者略過失敗照片、報告送出失敗、下拉選項載入失敗、表單程式錯誤。
 - 沒網路時送不出去的回報會先存在手機裡，下次開表單或網路恢復時補送。每次開啟表單最多回報 8 則，避免洗版。
 - 錯誤頁會顯示「此錯誤已自動回報給負責工程師」。
-- **需匯入 n8n 並設為 Active**：`Supervisor Form Error Report.json`。
+- **需重新匯入 n8n**：`Supervisor Error Notification.json`（ID `LhO1L9YtYPahglea`，主流程的 Error workflow 指向它，所以要匯入到同一個流程裡，不要另開新流程）。
 
 ### 照片上傳失敗時可「略過失敗的照片，直接送出報告」
 - 錯誤頁在「重新送出」下方新增橘色按鈕，確認後只用已上傳成功的照片送出報告，不再重試失敗的照片。
