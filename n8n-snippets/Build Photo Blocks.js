@@ -1,4 +1,4 @@
-const d = $('Prepare Data').first().json;
+const d = $('Prepare Data1').first().json;
 const photoUrls = d.photoUrls || [];
 const pageId = $json.id;
 // No page id = "Notion: Create Daily Log" failed (it continues on fail); Build

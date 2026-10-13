@@ -1,10 +1,10 @@
-const d = $('Prepare Data').first().json;
-const genNode = $('Generate PDF HTML').first().json;
+const d = $('Prepare Data1').first().json;
+const genNode = $('Generate PDF HTML1').first().json;
 const dZH = genNode.translatedZH || d;
 const translationFailed = genNode.geminiStatus !== 'success';
 
-const variantOrigins = $('Split Out').all();
-const driveUploads = $('Google Drive Upload').all();
+const variantOrigins = $('Split Out1').all();
+const driveUploads = $('Google Drive Upload1').all();
 const idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);
 const driveUrl = 'https://drive.google.com/file/d/' + driveUploads[idxOf('contractor')].json.id + '/view';
 const driveUrlZH = 'https://drive.google.com/file/d/' + driveUploads[idxOf('zh')].json.id + '/view';

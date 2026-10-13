@@ -1,9 +1,9 @@
-const d = $('Prepare Data').first().json;
-const genNode = $('Generate PDF HTML').first().json;
+const d = $('Prepare Data1').first().json;
+const genNode = $('Generate PDF HTML1').first().json;
 const dZH = genNode.translatedZH || d;
 const translationFailed = genNode.geminiStatus !== 'success';
-const variantOrigins = $('Split Out').all();
-const driveUploads = $('Google Drive Upload').all();
+const variantOrigins = $('Split Out1').all();
+const driveUploads = $('Google Drive Upload1').all();
 const idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);
 const driveFileId = driveUploads[idxOf('contractor')].json.id;
 const driveUrl = 'https://drive.google.com/file/d/' + driveFileId + '/view';
@@ -15,7 +15,7 @@ const driveUrlZH = 'https://drive.google.com/file/d/' + driveFileIdZH + '/view';
 let notionUrl = '';
 let notionError = '';
 try {
-  const n = $('Notion: Create Daily Log').first().json;
+  const n = $('Notion: Create Daily Log1').first().json;
   if (n && !n.error && n.id) notionUrl = n.url || ('https://www.notion.so/' + String(n.id).replace(/-/g, ''));
   else notionError = String((n && n.error && (n.error.message || n.error.description || JSON.stringify(n.error))) || 'no page created').slice(0, 200);
 } catch (e) { notionError = 'Notion node did not run'; }

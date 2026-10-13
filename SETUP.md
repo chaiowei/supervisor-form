@@ -87,7 +87,8 @@ n8n Cloud：https://jerry-hsieh.app.n8n.cloud
 ## 修改 n8n 主流程 Code 節點的方式
 
 1. 打開 `n8n-snippets/` 裡對應的檔案（例如 `Build Messages.js`），全選複製
-2. n8n 打開 Supervisor Daily Report v2 → 雙擊同名節點 → 程式碼框全部取代 → Save
+2. n8n 打開 Supervisor Daily Report v2 → 雙擊對應節點 → 程式碼框全部取代 → Save
+   - 2026-10-13 整份重新匯入後，n8n 上大部分節點名稱多了「1」（例如 `Prepare Data1`、`Build Messages1`、`Notion: Create Daily Log1`）。程式碼裡的 `$('…')` 已經對應這些名稱，**不要把節點改回原名**，否則程式會找不到節點
 3. 送一份測試日誌確認
 
 ---

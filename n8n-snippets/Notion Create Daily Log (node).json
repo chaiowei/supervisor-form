@@ -24,7 +24,7 @@
         "jsonBody": "={{ JSON.stringify($json.body) }}",
         "options": {}
       },
-      "name": "Notion: Create Daily Log",
+      "name": "Notion: Create Daily Log1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [

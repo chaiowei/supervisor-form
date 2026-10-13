@@ -1,4 +1,4 @@
-const d = $('Prepare Data').first().json;
+const d = $('Prepare Data1').first().json;
 const lang = d.language || 'en';
 let dZH = { ...d, weekday: d.weekdayZH };
 let geminiStatus;

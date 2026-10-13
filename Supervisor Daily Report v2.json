@@ -8,7 +8,7 @@
         "options": {}
       },
       "id": "37359929-ab8f-462f-8acf-a6ce332691d1",
-      "name": "Webhook",
+      "name": "Webhook1",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
@@ -22,7 +22,7 @@
         "jsCode": "const raw = $input.first().json;\nconst d = raw.body || raw;\n// Drop a report this workflow already received (same submissionId from the\n// form — e.g. \"Resubmit\" after the first reply was lost on site). Returning\n// no items stops the workflow, so no duplicate PDF / Notion page / LINE push.\n// Workflow static data persists across production (active) runs only.\nif (d.submissionId) {\n  const store = $getWorkflowStaticData('global');\n  const seen = store.seenSubmissions || {};\n  const now = Date.now();\n  for (const id of Object.keys(seen)) if (now - seen[id] > 3 * 24 * 3600 * 1000) delete seen[id]; // keep 3 days\n  if (seen[d.submissionId]) return [];\n  seen[d.submissionId] = now;\n  store.seenSubmissions = seen;\n}\n\n// Fill-in time comes from the phone (\"2026/10/13 18:30:05 (Asia/Bangkok, UTC+7)\"),\n// so the n8n server's time zone never matters. Reports from an older form\n// version don't send it — fall back to the server clock in Bangkok time.\nconst pad2 = n => String(n).padStart(2, '0');\nlet filledAtLocal = String(d.filledAtLocal || '').trim();\nlet filledDate = String(d.filledDate || '').trim();\nif (!filledAtLocal) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {\n    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false\n  }).formatToParts(new Date()).map(x => [x.type, x.value]));\n  filledAtLocal = `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}:${p.second} (Asia/Bangkok, UTC+7)`;\n  filledDate = `${p.year}-${p.month}-${p.day}`;\n}\n// \"2026/10/13 18:30 (UTC+7)\" — short form for the PDF / LINE\nconst m = filledAtLocal.match(/^(\\d{4}\\/\\d{2}\\/\\d{2} \\d{2}:\\d{2})(?::\\d{2})?\\s*\\((?:.*?,\\s*)?([^)]*)\\)/);\nconst filledAtShort = m ? `${m[1]} (${m[2]})` : filledAtLocal;\nconst submitTime = filledAtShort;\n// Log date earlier than the day it was filled in = filled in afterwards\nconst lateEntry = !!(d.date && filledDate && d.date < filledDate);\n\nconst localeMap = { en: 'en-US', th: 'th-TH', zh: 'zh-TW' };\nconst dateObj = new Date(d.date + 'T00:00:00');\nconst weekday = dateObj.toLocaleDateString(localeMap[d.language] || 'en-US', { weekday: 'long' });\nconst weekdayZH = dateObj.toLocaleDateString('zh-TW', { weekday: 'long' });\n\n// Weather and hazardous-work labels, shared by the PDF / LINE / Notion nodes\nconst WX = {\n  en: { sunny: '☀️ Sunny', rainy: '🌧️ Rain', heavyRain: '🌧️🌧️ Heavy rain', strongWind: '💨 Strong wind', thunderstorm: '⛈️ Thunderstorm' },\n  th: { sunny: '☀️ แดดออก', rainy: '🌧️ ฝนตก', heavyRain: '🌧️🌧️ ฝนตกหนัก', strongWind: '💨 ลมแรง', thunderstorm: '⛈️ พายุฝนฟ้าคะนอง' },\n  zh: { sunny: '☀️ 晴天', rainy: '🌧️ 下雨', heavyRain: '🌧️🌧️ 大雨', strongWind: '💨 強風', thunderstorm: '⛈️ 雷雨' }\n};\nconst HZ = {\n  en: { none: 'No hazardous work', hotWork: 'Hot work', lifting: 'Lifting', height: 'Work at height', confinedSpace: 'Confined space' },\n  th: { none: 'ไม่มีงานอันตราย', hotWork: 'งานที่ก่อให้เกิดประกายไฟ', lifting: 'งานยก', height: 'งานบนที่สูง', confinedSpace: 'งานในที่อับอากาศ' },\n  zh: { none: '無危險作業', hotWork: '動火作業', lifting: '吊裝作業', height: '高空作業', confinedSpace: '局限空間作業' }\n};\nconst hazardCodes = String(d.hazardWork || '').split(',').map(s => s.trim()).filter(c => HZ.zh[c]);\nconst riskCodes = hazardCodes.filter(c => c !== 'none');\nconst labelsFor = lg => {\n  const sep = lg === 'zh' ? '、' : ', ';\n  return {\n    mW: WX[lg][d.morningWeather] || d.morningWeather || '-',\n    aW: WX[lg][d.afternoonWeather] || d.afternoonWeather || '-',\n    hazard: hazardCodes.length ? hazardCodes.map(c => HZ[lg][c]).join(sep) : '-',\n    risk: riskCodes.map(c => HZ[lg][c]).join(sep)\n  };\n};\nconst labels = { contractor: labelsFor(WX[d.language] ? d.language : 'en'), zh: labelsFor('zh') };\n\nconst safeStr = s => (s || '').slice(0, 30);\nconst fileName = `${d.date}_${safeStr(d.contractor)}_${safeStr(d.projectName)}.pdf`;\nconst photoUrls = d.photoUrls || [];\nreturn [{ json: {\n  ...d, submitTime, filledAtLocal, filledAtShort, filledDate, lateEntry,\n  weekday, weekdayZH, fileName, photoUrls, photoCount: photoUrls.length,\n  hazardCodes, riskCodes, labels\n} }];"
       },
       "id": "ba251907-49be-433a-b124-854538d8e69f",
-      "name": "Prepare Data",
+      "name": "Prepare Data1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -32,10 +32,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Prepare Data').first().json;\nconst lang = d.language || 'en';\nlet dZH = { ...d, weekday: d.weekdayZH };\nlet geminiStatus;\nif (lang === 'zh') {\n  // Source form was already filled in Chinese — never call/trust Gemini for\n  // this case (per Jerry's requirement), so a model hiccup can't corrupt\n  // already-correct Chinese text. The 'Is ZH Source?' IF node upstream\n  // skipped the Gemini HTTP call entirely for this path.\n  geminiStatus = 'success';\n} else {\n  const gemini = $input.first().json;\n  geminiStatus = 'not_called';\n  try {\n    if (gemini && !gemini.error) {\n      const rawText = gemini.candidates?.[0]?.content?.parts?.[0]?.text;\n      if (rawText) {\n        let cleanText = rawText;\n        if (cleanText.trimStart().startsWith('```')) {\n          cleanText = cleanText.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();\n        }\n        const translated = JSON.parse(cleanText.trim());\n        if (translated && typeof translated === 'object' && Object.keys(translated).length > 0) {\n          dZH = { ...d, ...translated, weekday: d.weekdayZH };\n          geminiStatus = 'success';\n        } else {\n          geminiStatus = 'empty_json';\n        }\n      } else {\n        geminiStatus = 'no_text:' + JSON.stringify(Object.keys(gemini || {}).slice(0, 5));\n      }\n    } else {\n      geminiStatus = 'gemini_error:' + String((gemini && (gemini.error || gemini.message)) || 'unknown').slice(0, 100);\n    }\n  } catch(e) {\n    geminiStatus = 'parse_err:' + String(e.message || '').slice(0, 100);\n  }\n}\n// Weather / hazardous-work labels are built once in Prepare Data\nconst lbC = (d.labels && d.labels.contractor) || {};\nconst lbZ = (d.labels && d.labels.zh) || {};\nconst dC = { ...d, mW: lbC.mW || '-', aW: lbC.aW || '-', hazard: lbC.hazard || '-', risk: lbC.risk || '' };\ndZH = { ...dZH, mW: lbZ.mW || '-', aW: lbZ.aW || '-', hazard: lbZ.hazard || '-', risk: lbZ.risk || '' };\n// Chinese PDF of a Thai/English report: show the original under the\n// translation for the fields where a mistranslated quantity, size or spec\n// matters most, so it can be checked against what the contractor wrote.\nconst ORIG_FIELDS = ['constructionItems', 'materialsUsed', 'equipment', 'samplingTests', 'qualityInspection'];\nconst origZH = (lang !== 'zh' && geminiStatus === 'success') ? d : null;\nconst LBL = {\n  en: { title: 'Work Daily Report', projectName: 'Project Name', constructionArea: 'Construction Area', date: 'Date', weekday: 'Day', weather: 'Weather', morning: 'AM', afternoon: 'PM', time: 'Filled In', hazard: 'Hazardous Work', late: 'Late entry', orig: 'Original', constructionLocation: 'Construction Location', workContent: 'Work Content', constructionItems: 'Construction Items (Today)', tomorrowPlan: \"Tomorrow's Plan\", materialsUsed: 'Materials Used', equipment: 'Equipment Used', workers: 'Workers', persons: '', communication: 'Contractor Communication', otherNotes: 'Other Notes', samplingTests: 'Sampling & Testing Records', qualityInspection: 'Quality & Qty Inspection', supervisor: 'Unit Supervisor', inspector: 'Inspector', genLabel: 'Filled in' },\n  th: { title: 'บันทึกงานประจำวัน', projectName: 'ชื่อโครงการ', constructionArea: 'พื้นที่ก่อสร้าง', date: 'วันที่', weekday: 'วัน', weather: 'สภาพอากาศ', morning: 'เช้า', afternoon: 'บ่าย', time: 'เวลาที่กรอก', hazard: 'งานอันตราย', late: 'บันทึกย้อนหลัง', orig: 'ต้นฉบับ', constructionLocation: 'ตำแหน่งก่อสร้าง', workContent: 'เนื้อหางาน', constructionItems: 'รายการงาน (วันนี้)', tomorrowPlan: 'แผนงานพรุ่งนี้', materialsUsed: 'วัสดุที่ใช้', equipment: 'เครื่องมือ', workers: 'จำนวนคน', persons: 'คน', communication: 'การสื่อสารกับผู้รับเหมา', otherNotes: 'หมายเหตุสำคัญ', samplingTests: 'การเก็บตัวอย่าง', qualityInspection: 'การตรวจสอบคุณภาพ', supervisor: 'ผู้จัดการ', inspector: 'ผู้ตรวจสอบ', genLabel: 'กรอกเมื่อ' },\n  zh: { title: '監工日誌', projectName: '工程名稱', constructionArea: '施工廠區', date: '日期', weekday: '星期', weather: '天氣', morning: '上午', afternoon: '下午', time: '填寫時間', hazard: '今日危險作業', late: '補填', orig: '原文', constructionLocation: '施工部位', workContent: '工作內容', constructionItems: '施工項目（今日）', tomorrowPlan: '明日預計工作', materialsUsed: '供給材料使用', equipment: '機具使用', workers: '出工人數', persons: '人', communication: '與廠商溝通協調記錄', otherNotes: '其他重要事項記錄', samplingTests: '施工取樣試驗記錄', qualityInspection: '品質、數量檢查記錄', supervisor: '單位主管', inspector: '負責工程師', genLabel: '填寫時間' }\n};\nconst L = LBL[lang] || LBL.en;\nconst LZH = LBL.zh;\nconst photoUrls = d.photoUrls || [];\nconst esc = s => String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\nlet photoHtml = '';\nif (photoUrls.length > 0) {\n  for (let i = 0; i < photoUrls.length; i += 4) {\n    const chunk = photoUrls.slice(i, i + 4);\n    const cells = chunk.map(url => `<td style='width:50%;padding:4px'><img src='${url}' style='width:100%;height:auto'></td>`);\n    while (cells.length < 4) cells.push(`<td style='width:50%;padding:4px'></td>`);\n    photoHtml += `<table style='width:100%;border-collapse:collapse;margin-top:8px;page-break-inside:avoid'><tr>${cells.slice(0,2).join('')}</tr><tr>${cells.slice(2,4).join('')}</tr></table>`;\n  }\n}\nfunction buildHtml(Lb, data, genStamp, orig) {\n  // Field text, plus the original-language text under it when it differs\n  const fx = key => {\n    const o = orig && String(orig[key] || '').trim();\n    const note = (o && ORIG_FIELDS.includes(key) && o !== String(data[key] || '').trim())\n      ? `<div class='orig'>${Lb.orig}: ${esc(o)}</div>` : '';\n    return esc(data[key]) + note;\n  };\n  const hazardCell = data.risk\n    ? `<td colspan='3' style='color:#c53030;font-weight:bold'>⚠️ ${esc(data.hazard)}</td>`\n    : `<td colspan='3'>${esc(data.hazard)}</td>`;\n  const timeCell = esc(data.filledAtShort || data.submitTime) + (data.lateEntry ? ` <b style='color:#a05a00'>(${Lb.late})</b>` : '');\n  return `<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:Arial,'Noto Sans Thai',sans-serif;font-size:10pt;margin:0}.t{text-align:center;font-weight:bold;margin-bottom:4px}table.m{width:100%;border-collapse:collapse}table.m td{border:1px solid #333;padding:4px 6px;vertical-align:top}.sh{background:#ddd;font-weight:bold;text-align:center}.c{min-height:40px;white-space:pre-wrap}.gen-stamp{position:fixed;bottom:6mm;right:8mm;font-size:8pt;color:#aaaaaa}.orig{margin-top:4px;padding-top:3px;border-top:1px dashed #bbb;color:#666;font-size:8.5pt;white-space:pre-wrap}</style></head><body><div class='gen-stamp'>${Lb.genLabel}: ${genStamp}</div><div class='t' style='font-size:14pt'>ECO INFINIC</div><div class='t' style='font-size:12pt;margin-bottom:8px'>${Lb.title}</div><table class='m'><tr><td style='width:12%'><b>${Lb.projectName}</b></td><td style='width:38%'>${esc(data.projectName)}</td><td style='width:12%'><b>${Lb.constructionArea}</b></td><td style='width:38%'>${esc(data.constructionArea)}</td></tr><tr><td><b>${Lb.date}</b></td><td>${esc(data.date)}</td><td><b>${Lb.weekday}</b></td><td>${esc(data.weekday)}</td></tr><tr><td><b>${Lb.weather}</b></td><td colspan='3'>${Lb.morning}: ${esc(data.mW)} / ${Lb.afternoon}: ${esc(data.aW)}</td></tr><tr><td><b>${Lb.hazard}</b></td>${hazardCell}</tr><tr><td><b>${Lb.time}</b></td><td colspan='3'>${timeCell}</td></tr><tr><td class='sh' colspan='4'>${Lb.constructionLocation}</td></tr><tr><td colspan='4' class='c'>${esc(data.constructionLocation)}</td></tr><tr><td class='sh' colspan='4'>${Lb.workContent}</td></tr><tr><td><b>${Lb.constructionItems}</b></td><td colspan='3' class='c' style='min-height:60px'>${fx('constructionItems')}</td></tr><tr><td><b>${Lb.tomorrowPlan}</b></td><td colspan='3' class='c' style='min-height:50px'>${fx('tomorrowPlan')}</td></tr><tr><td><b>${Lb.materialsUsed}</b></td><td>${fx('materialsUsed')}</td><td><b>${Lb.equipment}</b></td><td>${fx('equipment')}</td></tr><tr><td><b>${Lb.workers}</b></td><td colspan='3'>${esc(data.workers)} ${Lb.persons}</td></tr><tr><td class='sh' colspan='4'>${Lb.communication}</td></tr><tr><td colspan='4' class='c'>${esc(data.communication)}</td></tr><tr><td class='sh' colspan='4'>${Lb.otherNotes}</td></tr><tr><td colspan='4' class='c'>${esc(data.otherNotes)}</td></tr><tr><td colspan='2'><b>${Lb.samplingTests}</b></td><td colspan='2'><b>${Lb.qualityInspection}</b></td></tr><tr><td colspan='2' class='c'>${fx('samplingTests')}</td><td colspan='2' class='c'>${fx('qualityInspection')}</td></tr><tr><td><b>${Lb.supervisor}</b></td><td></td><td><b>${Lb.inspector}</b></td><td>${esc(data.supervisor)}</td></tr></table>${photoHtml}</body></html>`;\n}\n// Phone-local fill-in time from Prepare Data (not this server's clock)\nconst genStamp = d.filledAtShort || d.submitTime || '';\nconst html = buildHtml(L, dC, genStamp, null);\nlet htmlZH = buildHtml(LZH, dZH, genStamp, origZH);\nif (geminiStatus !== 'success') {\n  const warnBanner = \"<div style='background:#fee2e2;border:2px solid #e53e3e;color:#991b1b;padding:8px 12px;margin-bottom:8px;font-weight:bold;font-size:11pt'>⚠️ 自動翻譯失敗，以下內容為原文（非正式中文翻譯），請人工確認 / Translation failed — content below is original language</div>\";\n  htmlZH = htmlZH.replace('<body>', '<body>' + warnBanner);\n}\nconst variants = [\n  { lang: 'contractor', html: html, fileName: d.fileName },\n  { lang: 'zh', html: htmlZH, fileName: d.fileName.replace('.pdf', '_ZH.pdf') }\n];\nreturn [{ json: { ...d, pdfHtml: html, pdfHtmlZH: htmlZH, translatedZH: dZH, geminiStatus, variants } }];"
+        "jsCode": "const d = $('Prepare Data1').first().json;\nconst lang = d.language || 'en';\nlet dZH = { ...d, weekday: d.weekdayZH };\nlet geminiStatus;\nif (lang === 'zh') {\n  // Source form was already filled in Chinese — never call/trust Gemini for\n  // this case (per Jerry's requirement), so a model hiccup can't corrupt\n  // already-correct Chinese text. The 'Is ZH Source?' IF node upstream\n  // skipped the Gemini HTTP call entirely for this path.\n  geminiStatus = 'success';\n} else {\n  const gemini = $input.first().json;\n  geminiStatus = 'not_called';\n  try {\n    if (gemini && !gemini.error) {\n      const rawText = gemini.candidates?.[0]?.content?.parts?.[0]?.text;\n      if (rawText) {\n        let cleanText = rawText;\n        if (cleanText.trimStart().startsWith('```')) {\n          cleanText = cleanText.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();\n        }\n        const translated = JSON.parse(cleanText.trim());\n        if (translated && typeof translated === 'object' && Object.keys(translated).length > 0) {\n          dZH = { ...d, ...translated, weekday: d.weekdayZH };\n          geminiStatus = 'success';\n        } else {\n          geminiStatus = 'empty_json';\n        }\n      } else {\n        geminiStatus = 'no_text:' + JSON.stringify(Object.keys(gemini || {}).slice(0, 5));\n      }\n    } else {\n      geminiStatus = 'gemini_error:' + String((gemini && (gemini.error || gemini.message)) || 'unknown').slice(0, 100);\n    }\n  } catch(e) {\n    geminiStatus = 'parse_err:' + String(e.message || '').slice(0, 100);\n  }\n}\n// Weather / hazardous-work labels are built once in Prepare Data\nconst lbC = (d.labels && d.labels.contractor) || {};\nconst lbZ = (d.labels && d.labels.zh) || {};\nconst dC = { ...d, mW: lbC.mW || '-', aW: lbC.aW || '-', hazard: lbC.hazard || '-', risk: lbC.risk || '' };\ndZH = { ...dZH, mW: lbZ.mW || '-', aW: lbZ.aW || '-', hazard: lbZ.hazard || '-', risk: lbZ.risk || '' };\n// Chinese PDF of a Thai/English report: show the original under the\n// translation for the fields where a mistranslated quantity, size or spec\n// matters most, so it can be checked against what the contractor wrote.\nconst ORIG_FIELDS = ['constructionItems', 'materialsUsed', 'equipment', 'samplingTests', 'qualityInspection'];\nconst origZH = (lang !== 'zh' && geminiStatus === 'success') ? d : null;\nconst LBL = {\n  en: { title: 'Work Daily Report', projectName: 'Project Name', constructionArea: 'Construction Area', date: 'Date', weekday: 'Day', weather: 'Weather', morning: 'AM', afternoon: 'PM', time: 'Filled In', hazard: 'Hazardous Work', late: 'Late entry', orig: 'Original', constructionLocation: 'Construction Location', workContent: 'Work Content', constructionItems: 'Construction Items (Today)', tomorrowPlan: \"Tomorrow's Plan\", materialsUsed: 'Materials Used', equipment: 'Equipment Used', workers: 'Workers', persons: '', communication: 'Contractor Communication', otherNotes: 'Other Notes', samplingTests: 'Sampling & Testing Records', qualityInspection: 'Quality & Qty Inspection', supervisor: 'Unit Supervisor', inspector: 'Inspector', genLabel: 'Filled in' },\n  th: { title: 'บันทึกงานประจำวัน', projectName: 'ชื่อโครงการ', constructionArea: 'พื้นที่ก่อสร้าง', date: 'วันที่', weekday: 'วัน', weather: 'สภาพอากาศ', morning: 'เช้า', afternoon: 'บ่าย', time: 'เวลาที่กรอก', hazard: 'งานอันตราย', late: 'บันทึกย้อนหลัง', orig: 'ต้นฉบับ', constructionLocation: 'ตำแหน่งก่อสร้าง', workContent: 'เนื้อหางาน', constructionItems: 'รายการงาน (วันนี้)', tomorrowPlan: 'แผนงานพรุ่งนี้', materialsUsed: 'วัสดุที่ใช้', equipment: 'เครื่องมือ', workers: 'จำนวนคน', persons: 'คน', communication: 'การสื่อสารกับผู้รับเหมา', otherNotes: 'หมายเหตุสำคัญ', samplingTests: 'การเก็บตัวอย่าง', qualityInspection: 'การตรวจสอบคุณภาพ', supervisor: 'ผู้จัดการ', inspector: 'ผู้ตรวจสอบ', genLabel: 'กรอกเมื่อ' },\n  zh: { title: '監工日誌', projectName: '工程名稱', constructionArea: '施工廠區', date: '日期', weekday: '星期', weather: '天氣', morning: '上午', afternoon: '下午', time: '填寫時間', hazard: '今日危險作業', late: '補填', orig: '原文', constructionLocation: '施工部位', workContent: '工作內容', constructionItems: '施工項目（今日）', tomorrowPlan: '明日預計工作', materialsUsed: '供給材料使用', equipment: '機具使用', workers: '出工人數', persons: '人', communication: '與廠商溝通協調記錄', otherNotes: '其他重要事項記錄', samplingTests: '施工取樣試驗記錄', qualityInspection: '品質、數量檢查記錄', supervisor: '單位主管', inspector: '負責工程師', genLabel: '填寫時間' }\n};\nconst L = LBL[lang] || LBL.en;\nconst LZH = LBL.zh;\nconst photoUrls = d.photoUrls || [];\nconst esc = s => String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\nlet photoHtml = '';\nif (photoUrls.length > 0) {\n  for (let i = 0; i < photoUrls.length; i += 4) {\n    const chunk = photoUrls.slice(i, i + 4);\n    const cells = chunk.map(url => `<td style='width:50%;padding:4px'><img src='${url}' style='width:100%;height:auto'></td>`);\n    while (cells.length < 4) cells.push(`<td style='width:50%;padding:4px'></td>`);\n    photoHtml += `<table style='width:100%;border-collapse:collapse;margin-top:8px;page-break-inside:avoid'><tr>${cells.slice(0,2).join('')}</tr><tr>${cells.slice(2,4).join('')}</tr></table>`;\n  }\n}\nfunction buildHtml(Lb, data, genStamp, orig) {\n  // Field text, plus the original-language text under it when it differs\n  const fx = key => {\n    const o = orig && String(orig[key] || '').trim();\n    const note = (o && ORIG_FIELDS.includes(key) && o !== String(data[key] || '').trim())\n      ? `<div class='orig'>${Lb.orig}: ${esc(o)}</div>` : '';\n    return esc(data[key]) + note;\n  };\n  const hazardCell = data.risk\n    ? `<td colspan='3' style='color:#c53030;font-weight:bold'>⚠️ ${esc(data.hazard)}</td>`\n    : `<td colspan='3'>${esc(data.hazard)}</td>`;\n  const timeCell = esc(data.filledAtShort || data.submitTime) + (data.lateEntry ? ` <b style='color:#a05a00'>(${Lb.late})</b>` : '');\n  return `<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:Arial,'Noto Sans Thai',sans-serif;font-size:10pt;margin:0}.t{text-align:center;font-weight:bold;margin-bottom:4px}table.m{width:100%;border-collapse:collapse}table.m td{border:1px solid #333;padding:4px 6px;vertical-align:top}.sh{background:#ddd;font-weight:bold;text-align:center}.c{min-height:40px;white-space:pre-wrap}.gen-stamp{position:fixed;bottom:6mm;right:8mm;font-size:8pt;color:#aaaaaa}.orig{margin-top:4px;padding-top:3px;border-top:1px dashed #bbb;color:#666;font-size:8.5pt;white-space:pre-wrap}</style></head><body><div class='gen-stamp'>${Lb.genLabel}: ${genStamp}</div><div class='t' style='font-size:14pt'>ECO INFINIC</div><div class='t' style='font-size:12pt;margin-bottom:8px'>${Lb.title}</div><table class='m'><tr><td style='width:12%'><b>${Lb.projectName}</b></td><td style='width:38%'>${esc(data.projectName)}</td><td style='width:12%'><b>${Lb.constructionArea}</b></td><td style='width:38%'>${esc(data.constructionArea)}</td></tr><tr><td><b>${Lb.date}</b></td><td>${esc(data.date)}</td><td><b>${Lb.weekday}</b></td><td>${esc(data.weekday)}</td></tr><tr><td><b>${Lb.weather}</b></td><td colspan='3'>${Lb.morning}: ${esc(data.mW)} / ${Lb.afternoon}: ${esc(data.aW)}</td></tr><tr><td><b>${Lb.hazard}</b></td>${hazardCell}</tr><tr><td><b>${Lb.time}</b></td><td colspan='3'>${timeCell}</td></tr><tr><td class='sh' colspan='4'>${Lb.constructionLocation}</td></tr><tr><td colspan='4' class='c'>${esc(data.constructionLocation)}</td></tr><tr><td class='sh' colspan='4'>${Lb.workContent}</td></tr><tr><td><b>${Lb.constructionItems}</b></td><td colspan='3' class='c' style='min-height:60px'>${fx('constructionItems')}</td></tr><tr><td><b>${Lb.tomorrowPlan}</b></td><td colspan='3' class='c' style='min-height:50px'>${fx('tomorrowPlan')}</td></tr><tr><td><b>${Lb.materialsUsed}</b></td><td>${fx('materialsUsed')}</td><td><b>${Lb.equipment}</b></td><td>${fx('equipment')}</td></tr><tr><td><b>${Lb.workers}</b></td><td colspan='3'>${esc(data.workers)} ${Lb.persons}</td></tr><tr><td class='sh' colspan='4'>${Lb.communication}</td></tr><tr><td colspan='4' class='c'>${esc(data.communication)}</td></tr><tr><td class='sh' colspan='4'>${Lb.otherNotes}</td></tr><tr><td colspan='4' class='c'>${esc(data.otherNotes)}</td></tr><tr><td colspan='2'><b>${Lb.samplingTests}</b></td><td colspan='2'><b>${Lb.qualityInspection}</b></td></tr><tr><td colspan='2' class='c'>${fx('samplingTests')}</td><td colspan='2' class='c'>${fx('qualityInspection')}</td></tr><tr><td><b>${Lb.supervisor}</b></td><td></td><td><b>${Lb.inspector}</b></td><td>${esc(data.supervisor)}</td></tr></table>${photoHtml}</body></html>`;\n}\n// Phone-local fill-in time from Prepare Data (not this server's clock)\nconst genStamp = d.filledAtShort || d.submitTime || '';\nconst html = buildHtml(L, dC, genStamp, null);\nlet htmlZH = buildHtml(LZH, dZH, genStamp, origZH);\nif (geminiStatus !== 'success') {\n  const warnBanner = \"<div style='background:#fee2e2;border:2px solid #e53e3e;color:#991b1b;padding:8px 12px;margin-bottom:8px;font-weight:bold;font-size:11pt'>⚠️ 自動翻譯失敗，以下內容為原文（非正式中文翻譯），請人工確認 / Translation failed — content below is original language</div>\";\n  htmlZH = htmlZH.replace('<body>', '<body>' + warnBanner);\n}\nconst variants = [\n  { lang: 'contractor', html: html, fileName: d.fileName },\n  { lang: 'zh', html: htmlZH, fileName: d.fileName.replace('.pdf', '_ZH.pdf') }\n];\nreturn [{ json: { ...d, pdfHtml: html, pdfHtmlZH: htmlZH, translatedZH: dZH, geminiStatus, variants } }];"
       },
       "id": "cf8402b5-fbc3-402a-af61-a70960371611",
-      "name": "Generate PDF HTML",
+      "name": "Generate PDF HTML1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -71,7 +71,7 @@
         }
       },
       "id": "f39a000a-34c6-431d-9572-dc8bb24a3df5",
-      "name": "PDF.co API",
+      "name": "PDF.co API1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -100,7 +100,7 @@
         }
       },
       "id": "000da00f-f0f8-4534-bcf7-69df6fc08e63",
-      "name": "Download PDF",
+      "name": "Download PDF1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -110,7 +110,7 @@
     },
     {
       "parameters": {
-        "name": "={{ $('Split Out').all()[$itemIndex].json.fileName }}",
+        "name": "={{ $('Split Out1').all()[$itemIndex].json.fileName }}",
         "driveId": {
           "__rl": true,
           "value": "My Drive",
@@ -125,7 +125,7 @@
         "options": {}
       },
       "id": "6097c0d8-36cb-43d7-90c2-cadca44e2d77",
-      "name": "Google Drive Upload",
+      "name": "Google Drive Upload1",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
@@ -160,7 +160,7 @@
         "options": {}
       },
       "id": "403fa966-71d6-46b5-aa61-2113e479f113",
-      "name": "Set Drive Permission",
+      "name": "Set Drive Permission1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -176,10 +176,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst translationFailed = genNode.geminiStatus !== 'success';\nconst variantOrigins = $('Split Out').all();\nconst driveUploads = $('Google Drive Upload').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveFileId = driveUploads[idxOf('contractor')].json.id;\nconst driveUrl = 'https://drive.google.com/file/d/' + driveFileId + '/view';\nconst driveFileIdZH = driveUploads[idxOf('zh')].json.id;\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveFileIdZH + '/view';\n// This node now runs after \"Notion: Create Daily Log\" so Jerry's message can\n// link the new Notion page. That node continues on fail — if it errored (or\n// didn't run), there's simply no Notion button.\nlet notionUrl = '';\nlet notionError = '';\ntry {\n  const n = $('Notion: Create Daily Log').first().json;\n  if (n && !n.error && n.id) notionUrl = n.url || ('https://www.notion.so/' + String(n.id).replace(/-/g, ''));\n  else notionError = String((n && n.error && (n.error.message || n.error.description || JSON.stringify(n.error))) || 'no page created').slice(0, 200);\n} catch (e) { notionError = 'Notion node did not run'; }\nconst lang = d.language || 'en';\n// Weather / hazardous-work labels are built once in Prepare Data\nconst lbC = (d.labels && d.labels.contractor) || {};\nconst lbZ = (d.labels && d.labels.zh) || {};\nconst mW = lbC.mW || '-', aW = lbC.aW || '-';\nconst mWZH = lbZ.mW || '-', aWZH = lbZ.aW || '-';\nconst CL = {\n  en: { title: '✅ Work Report Submitted', morning: 'AM', afternoon: 'PM', date: 'Date', project: 'Project', area: 'Area', weather: 'Weather', workers: 'Workers', location: '📍 Location', workDone: '🔨 Work Done', tomorrow: '📋 Tomorrow Plan', materials: '🧱 Materials', equipment: '⚙️ Equipment', comms: '💬 Communication', notes: '📝 Notes', sampling: '🧪 Sampling', quality: '✔️ Quality Check', download: '📥 Download PDF', share: '📤 Share', shareTitle: 'Daily Work Log', notion: '📒 Open Notion Page', hazard: '🦺 Hazardous work', filled: 'Filled in', late: '(late entry)' },\n  th: { title: '✅ ส่งรายงานสำเร็จ', morning: 'เช้า', afternoon: 'บ่าย', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', weather: 'อากาศ', workers: 'คนงาน', location: '📍 ตำแหน่ง', workDone: '🔨 งานวันนี้', tomorrow: '📋 แผนพรุ่งนี้', materials: '🧱 วัสดุ', equipment: '⚙️ เครื่องมือ', comms: '💬 ประสานงาน', notes: '📝 หมายเหตุ', sampling: '🧪 ตัวอย่าง', quality: '✔️ ตรวจสอบ', download: '📥 ดาวน์โหลด PDF', share: '📤 แชร์', shareTitle: 'บันทึกงานประจำวัน', notion: '📒 เปิดหน้า Notion', hazard: '🦺 งานอันตราย', filled: 'กรอกเมื่อ', late: '(บันทึกย้อนหลัง)' },\n  zh: { title: '✅ 監工日誌已送出', morning: '上午', afternoon: '下午', date: '日期', project: '工程', area: '廠區', weather: '天氣', workers: '出工人數', location: '📍 施工部位', workDone: '🔨 今日施工', tomorrow: '📋 明日計畫', materials: '🧱 材料', equipment: '⚙️ 機具', comms: '💬 溝通記錄', notes: '📝 其他備注', sampling: '🧪 取樣記錄', quality: '✔️ 品質檢查', download: '📥 下載 PDF', share: '📤 分享', shareTitle: '監工日誌', notion: '📒 開啟 Notion 頁面', hazard: '🦺 危險作業', filled: '填寫時間', late: '（補填）', notionFail: '⚠️ Notion 寫入失敗，請到 n8n Executions 查看' }\n};\nconst cl = CL[lang] || CL.en;\n// Jerry's title calls out hazardous work and failed translation up front\nlet titleZH = CL.zh.title;\nif (lbZ.risk) titleZH = `⚠️ 危險作業：${lbZ.risk}｜` + titleZH;\nif (translationFailed) titleZH = '⚠️翻譯失敗(原文) ' + titleZH;\nconst clZH = { ...CL.zh, title: titleZH };\nconst trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';\nfunction kv(label, value) {\n  return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };\n}\nfunction lbl(text) {\n  return { type: 'text', text: text, size: 'xs', color: '#1a73e8', weight: 'bold', margin: 'md' };\n}\nfunction txt(text) {\n  return { type: 'text', text: text, size: 'sm', color: '#333333', wrap: true, margin: 'xs' };\n}\nfunction sep() { return { type: 'separator', margin: 'sm', color: '#eeeeee' }; }\n// \"Share\" opens LINE's own chat picker (line.me/R/share) with a short summary\n// + the PDF link. LINE caps a URI action at 1000 chars and Thai/Chinese text\n// triples when URL-encoded, so the project name is dropped if it would overflow.\nfunction shareUri(cl, data, pdfUrl) {\n  const head = `📋 ${cl.shareTitle} ${data.date || ''}`;\n  const tail = `📥 PDF: ${pdfUrl}`;\n  const full = [head, `${cl.project}: ${trunc(data.projectName, 40)}`, String(data.contractor || ''), tail].filter(Boolean).join('\\n');\n  const uri = 'https://line.me/R/share?text=' + encodeURIComponent(full);\n  return uri.length <= 1000 ? uri : 'https://line.me/R/share?text=' + encodeURIComponent(head + '\\n' + tail);\n}\nfunction buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor, notionLink, lb, extra = {}) {\n  const hazardKv = kv(cl.hazard, lb.hazard || '-');\n  if (lb.risk) { hazardKv.contents[1].color = '#c53030'; hazardKv.contents[1].weight = 'bold'; }\n  const body = [\n    kv(cl.date, data.date + ' (' + data.weekday + ')' + (data.lateEntry ? ' ' + cl.late : '')),\n    kv(cl.project, trunc(data.projectName, 50)),\n    kv(cl.area, trunc(data.constructionArea, 50)),\n    kv(cl.weather, cl.morning + ': ' + mWeather + '  ' + cl.afternoon + ': ' + aWeather),\n    kv(cl.workers, String(data.workers ?? '-')),\n    hazardKv,\n    ...(extra.showFilled ? [kv(cl.filled, data.filledAtShort || '-')] : []),\n    ...(extra.warning ? [{ type: 'text', text: extra.warning, size: 'xs', color: '#c53030', weight: 'bold', wrap: true, margin: 'sm' }] : []),\n    sep(),\n    lbl(cl.location), txt(trunc(data.constructionLocation, 150)),\n    sep(),\n    lbl(cl.workDone), txt(trunc(data.constructionItems, 200))\n  ];\n  if (data.tomorrowPlan) { body.push(sep()); body.push(lbl(cl.tomorrow)); body.push(txt(trunc(data.tomorrowPlan, 150))); }\n  if (data.materialsUsed || data.equipment) {\n    body.push(sep());\n    if (data.materialsUsed) body.push(kv(cl.materials, trunc(data.materialsUsed, 100)));\n    if (data.equipment) body.push(kv(cl.equipment, trunc(data.equipment, 100)));\n  }\n  if (data.communication) { body.push(sep()); body.push(lbl(cl.comms)); body.push(txt(trunc(data.communication, 150))); }\n  if (data.samplingTests) { body.push(sep()); body.push(lbl(cl.sampling)); body.push(txt(trunc(data.samplingTests, 150))); }\n  if (data.qualityInspection) { body.push(sep()); body.push(lbl(cl.quality)); body.push(txt(trunc(data.qualityInspection, 150))); }\n  if (data.otherNotes) { body.push(sep()); body.push(lbl(cl.notes)); body.push(txt(trunc(data.otherNotes, 150))); }\n  const footer = [\n    { type: 'button', style: 'primary', color: headerColor, height: 'sm', action: { type: 'uri', label: cl.download, uri: pdfUrl } },\n    { type: 'button', style: 'secondary', height: 'sm', action: { type: 'uri', label: cl.share, uri: shareUri(cl, data, pdfUrl) } }\n  ];\n  if (notionLink) footer.push({ type: 'button', style: 'link', height: 'sm', action: { type: 'uri', label: cl.notion, uri: notionLink } });\n  return {\n    type: 'bubble',\n    header: { type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '14px', contents: [{ type: 'text', text: cl.title, color: '#ffffff', weight: 'bold', size: 'md', wrap: true }, { type: 'text', text: String(data.contractor || ''), color: '#ffffffcc', size: 'xs', margin: 'xs' }] },\n    body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: body },\n    footer: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '10px', contents: footer }\n  };\n}\n// Contractor: download + share. Jerry: download + share + Notion page.\nconst contractorBubble = buildFlex(cl, d, mW, aW, driveUrl, '#1a73e8', '', lbC);\nconst jerryBubble = buildFlex(clZH, dZH, mWZH, aWZH, driveUrlZH, translationFailed ? '#e53e3e' : '#0d7a0d', notionUrl, lbZ,\n  { showFilled: true, warning: notionError ? CL.zh.notionFail : '' });\nconst contractorFlex = { to: d.lineUserId, messages: [{ type: 'flex', altText: cl.title, contents: contractorBubble }] };\nconst jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: clZH.title, contents: jerryBubble }] };\nfunction escHtml(s) { return String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\nconst JERRY_EMAIL = 'jerry_hsieh@eco-infinic.com';\nconst recipientEmail = (d.supervisorEmail || '').trim() || JERRY_EMAIL;\nconst isJerry = recipientEmail.toLowerCase() === JERRY_EMAIL.toLowerCase();\nconst emailSubject = `${translationFailed ? '⚠️翻譯失敗(原文) - ' : ''}${lbZ.risk ? `⚠️危險作業：${lbZ.risk} - ` : ''}監工日誌通知 - ${d.projectName || ''} - ${d.date || ''}`;\nconst emailHtml = `${translationFailed ? '<p style=\"color:#e53e3e;font-weight:bold\">⚠️ 自動翻譯失敗，本次中文版PDF內容為原文（非正式翻譯），請人工確認後再轉發。</p>' : ''}<p>負責工程師 <b>${escHtml(d.supervisor)}</b> 提交了新的監工日誌。</p><p>工程：${escHtml(d.projectName)}<br>廠區：${escHtml(d.constructionArea)}<br>日期：${escHtml(d.date)}（${escHtml(dZH.weekday)}）${d.lateEntry ? '<b style=\"color:#a05a00\">（補填）</b>' : ''}<br>廠商：${escHtml(d.contractor)}<br>今日危險作業：${lbZ.risk ? `<b style=\"color:#c53030\">⚠️ ${escHtml(lbZ.hazard)}</b>` : escHtml(lbZ.hazard)}<br>填寫時間：${escHtml(d.filledAtShort)}</p>${notionError ? `<p style=\"color:#c53030;font-weight:bold\">⚠️ Notion 寫入失敗：${escHtml(notionError)}</p>` : ''}<p><a href=\"${driveUrlZH}\">📥 下載中文版 PDF 報告</a>${notionUrl ? `<br><a href=\"${notionUrl}\">📒 開啟 Notion 頁面</a>` : ''}</p>`;\nreturn [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex), isJerry, recipientEmail, emailSubject, emailHtml } }];"
+        "jsCode": "const d = $('Prepare Data1').first().json;\nconst genNode = $('Generate PDF HTML1').first().json;\nconst dZH = genNode.translatedZH || d;\nconst translationFailed = genNode.geminiStatus !== 'success';\nconst variantOrigins = $('Split Out1').all();\nconst driveUploads = $('Google Drive Upload1').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveFileId = driveUploads[idxOf('contractor')].json.id;\nconst driveUrl = 'https://drive.google.com/file/d/' + driveFileId + '/view';\nconst driveFileIdZH = driveUploads[idxOf('zh')].json.id;\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveFileIdZH + '/view';\n// This node now runs after \"Notion: Create Daily Log\" so Jerry's message can\n// link the new Notion page. That node continues on fail — if it errored (or\n// didn't run), there's simply no Notion button.\nlet notionUrl = '';\nlet notionError = '';\ntry {\n  const n = $('Notion: Create Daily Log1').first().json;\n  if (n && !n.error && n.id) notionUrl = n.url || ('https://www.notion.so/' + String(n.id).replace(/-/g, ''));\n  else notionError = String((n && n.error && (n.error.message || n.error.description || JSON.stringify(n.error))) || 'no page created').slice(0, 200);\n} catch (e) { notionError = 'Notion node did not run'; }\nconst lang = d.language || 'en';\n// Weather / hazardous-work labels are built once in Prepare Data\nconst lbC = (d.labels && d.labels.contractor) || {};\nconst lbZ = (d.labels && d.labels.zh) || {};\nconst mW = lbC.mW || '-', aW = lbC.aW || '-';\nconst mWZH = lbZ.mW || '-', aWZH = lbZ.aW || '-';\nconst CL = {\n  en: { title: '✅ Work Report Submitted', morning: 'AM', afternoon: 'PM', date: 'Date', project: 'Project', area: 'Area', weather: 'Weather', workers: 'Workers', location: '📍 Location', workDone: '🔨 Work Done', tomorrow: '📋 Tomorrow Plan', materials: '🧱 Materials', equipment: '⚙️ Equipment', comms: '💬 Communication', notes: '📝 Notes', sampling: '🧪 Sampling', quality: '✔️ Quality Check', download: '📥 Download PDF', share: '📤 Share', shareTitle: 'Daily Work Log', notion: '📒 Open Notion Page', hazard: '🦺 Hazardous work', filled: 'Filled in', late: '(late entry)' },\n  th: { title: '✅ ส่งรายงานสำเร็จ', morning: 'เช้า', afternoon: 'บ่าย', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', weather: 'อากาศ', workers: 'คนงาน', location: '📍 ตำแหน่ง', workDone: '🔨 งานวันนี้', tomorrow: '📋 แผนพรุ่งนี้', materials: '🧱 วัสดุ', equipment: '⚙️ เครื่องมือ', comms: '💬 ประสานงาน', notes: '📝 หมายเหตุ', sampling: '🧪 ตัวอย่าง', quality: '✔️ ตรวจสอบ', download: '📥 ดาวน์โหลด PDF', share: '📤 แชร์', shareTitle: 'บันทึกงานประจำวัน', notion: '📒 เปิดหน้า Notion', hazard: '🦺 งานอันตราย', filled: 'กรอกเมื่อ', late: '(บันทึกย้อนหลัง)' },\n  zh: { title: '✅ 監工日誌已送出', morning: '上午', afternoon: '下午', date: '日期', project: '工程', area: '廠區', weather: '天氣', workers: '出工人數', location: '📍 施工部位', workDone: '🔨 今日施工', tomorrow: '📋 明日計畫', materials: '🧱 材料', equipment: '⚙️ 機具', comms: '💬 溝通記錄', notes: '📝 其他備注', sampling: '🧪 取樣記錄', quality: '✔️ 品質檢查', download: '📥 下載 PDF', share: '📤 分享', shareTitle: '監工日誌', notion: '📒 開啟 Notion 頁面', hazard: '🦺 危險作業', filled: '填寫時間', late: '（補填）', notionFail: '⚠️ Notion 寫入失敗，請到 n8n Executions 查看' }\n};\nconst cl = CL[lang] || CL.en;\n// Jerry's title calls out hazardous work and failed translation up front\nlet titleZH = CL.zh.title;\nif (lbZ.risk) titleZH = `⚠️ 危險作業：${lbZ.risk}｜` + titleZH;\nif (translationFailed) titleZH = '⚠️翻譯失敗(原文) ' + titleZH;\nconst clZH = { ...CL.zh, title: titleZH };\nconst trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';\nfunction kv(label, value) {\n  return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };\n}\nfunction lbl(text) {\n  return { type: 'text', text: text, size: 'xs', color: '#1a73e8', weight: 'bold', margin: 'md' };\n}\nfunction txt(text) {\n  return { type: 'text', text: text, size: 'sm', color: '#333333', wrap: true, margin: 'xs' };\n}\nfunction sep() { return { type: 'separator', margin: 'sm', color: '#eeeeee' }; }\n// \"Share\" opens LINE's own chat picker (line.me/R/share) with a short summary\n// + the PDF link. LINE caps a URI action at 1000 chars and Thai/Chinese text\n// triples when URL-encoded, so the project name is dropped if it would overflow.\nfunction shareUri(cl, data, pdfUrl) {\n  const head = `📋 ${cl.shareTitle} ${data.date || ''}`;\n  const tail = `📥 PDF: ${pdfUrl}`;\n  const full = [head, `${cl.project}: ${trunc(data.projectName, 40)}`, String(data.contractor || ''), tail].filter(Boolean).join('\\n');\n  const uri = 'https://line.me/R/share?text=' + encodeURIComponent(full);\n  return uri.length <= 1000 ? uri : 'https://line.me/R/share?text=' + encodeURIComponent(head + '\\n' + tail);\n}\nfunction buildFlex(cl, data, mWeather, aWeather, pdfUrl, headerColor, notionLink, lb, extra = {}) {\n  const hazardKv = kv(cl.hazard, lb.hazard || '-');\n  if (lb.risk) { hazardKv.contents[1].color = '#c53030'; hazardKv.contents[1].weight = 'bold'; }\n  const body = [\n    kv(cl.date, data.date + ' (' + data.weekday + ')' + (data.lateEntry ? ' ' + cl.late : '')),\n    kv(cl.project, trunc(data.projectName, 50)),\n    kv(cl.area, trunc(data.constructionArea, 50)),\n    kv(cl.weather, cl.morning + ': ' + mWeather + '  ' + cl.afternoon + ': ' + aWeather),\n    kv(cl.workers, String(data.workers ?? '-')),\n    hazardKv,\n    ...(extra.showFilled ? [kv(cl.filled, data.filledAtShort || '-')] : []),\n    ...(extra.warning ? [{ type: 'text', text: extra.warning, size: 'xs', color: '#c53030', weight: 'bold', wrap: true, margin: 'sm' }] : []),\n    sep(),\n    lbl(cl.location), txt(trunc(data.constructionLocation, 150)),\n    sep(),\n    lbl(cl.workDone), txt(trunc(data.constructionItems, 200))\n  ];\n  if (data.tomorrowPlan) { body.push(sep()); body.push(lbl(cl.tomorrow)); body.push(txt(trunc(data.tomorrowPlan, 150))); }\n  if (data.materialsUsed || data.equipment) {\n    body.push(sep());\n    if (data.materialsUsed) body.push(kv(cl.materials, trunc(data.materialsUsed, 100)));\n    if (data.equipment) body.push(kv(cl.equipment, trunc(data.equipment, 100)));\n  }\n  if (data.communication) { body.push(sep()); body.push(lbl(cl.comms)); body.push(txt(trunc(data.communication, 150))); }\n  if (data.samplingTests) { body.push(sep()); body.push(lbl(cl.sampling)); body.push(txt(trunc(data.samplingTests, 150))); }\n  if (data.qualityInspection) { body.push(sep()); body.push(lbl(cl.quality)); body.push(txt(trunc(data.qualityInspection, 150))); }\n  if (data.otherNotes) { body.push(sep()); body.push(lbl(cl.notes)); body.push(txt(trunc(data.otherNotes, 150))); }\n  const footer = [\n    { type: 'button', style: 'primary', color: headerColor, height: 'sm', action: { type: 'uri', label: cl.download, uri: pdfUrl } },\n    { type: 'button', style: 'secondary', height: 'sm', action: { type: 'uri', label: cl.share, uri: shareUri(cl, data, pdfUrl) } }\n  ];\n  if (notionLink) footer.push({ type: 'button', style: 'link', height: 'sm', action: { type: 'uri', label: cl.notion, uri: notionLink } });\n  return {\n    type: 'bubble',\n    header: { type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '14px', contents: [{ type: 'text', text: cl.title, color: '#ffffff', weight: 'bold', size: 'md', wrap: true }, { type: 'text', text: String(data.contractor || ''), color: '#ffffffcc', size: 'xs', margin: 'xs' }] },\n    body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: body },\n    footer: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '10px', contents: footer }\n  };\n}\n// Contractor: download + share. Jerry: download + share + Notion page.\nconst contractorBubble = buildFlex(cl, d, mW, aW, driveUrl, '#1a73e8', '', lbC);\nconst jerryBubble = buildFlex(clZH, dZH, mWZH, aWZH, driveUrlZH, translationFailed ? '#e53e3e' : '#0d7a0d', notionUrl, lbZ,\n  { showFilled: true, warning: notionError ? CL.zh.notionFail : '' });\nconst contractorFlex = { to: d.lineUserId, messages: [{ type: 'flex', altText: cl.title, contents: contractorBubble }] };\nconst jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: clZH.title, contents: jerryBubble }] };\nfunction escHtml(s) { return String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\nconst JERRY_EMAIL = 'jerry_hsieh@eco-infinic.com';\nconst recipientEmail = (d.supervisorEmail || '').trim() || JERRY_EMAIL;\nconst isJerry = recipientEmail.toLowerCase() === JERRY_EMAIL.toLowerCase();\nconst emailSubject = `${translationFailed ? '⚠️翻譯失敗(原文) - ' : ''}${lbZ.risk ? `⚠️危險作業：${lbZ.risk} - ` : ''}監工日誌通知 - ${d.projectName || ''} - ${d.date || ''}`;\nconst emailHtml = `${translationFailed ? '<p style=\"color:#e53e3e;font-weight:bold\">⚠️ 自動翻譯失敗，本次中文版PDF內容為原文（非正式翻譯），請人工確認後再轉發。</p>' : ''}<p>負責工程師 <b>${escHtml(d.supervisor)}</b> 提交了新的監工日誌。</p><p>工程：${escHtml(d.projectName)}<br>廠區：${escHtml(d.constructionArea)}<br>日期：${escHtml(d.date)}（${escHtml(dZH.weekday)}）${d.lateEntry ? '<b style=\"color:#a05a00\">（補填）</b>' : ''}<br>廠商：${escHtml(d.contractor)}<br>今日危險作業：${lbZ.risk ? `<b style=\"color:#c53030\">⚠️ ${escHtml(lbZ.hazard)}</b>` : escHtml(lbZ.hazard)}<br>填寫時間：${escHtml(d.filledAtShort)}</p>${notionError ? `<p style=\"color:#c53030;font-weight:bold\">⚠️ Notion 寫入失敗：${escHtml(notionError)}</p>` : ''}<p><a href=\"${driveUrlZH}\">📥 下載中文版 PDF 報告</a>${notionUrl ? `<br><a href=\"${notionUrl}\">📒 開啟 Notion 頁面</a>` : ''}</p>`;\nreturn [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex), isJerry, recipientEmail, emailSubject, emailHtml } }];"
       },
       "id": "588ec57e-d260-462e-a8d1-32059b361c6b",
-      "name": "Build Messages",
+      "name": "Build Messages1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -208,7 +208,7 @@
         "options": {}
       },
       "id": "99fafb66-1159-4273-9a48-80df4a40aff9",
-      "name": "LINE → Contractor",
+      "name": "LINE → Contractor1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -243,7 +243,7 @@
         "options": {}
       },
       "id": "654a971e-cb0e-4e9d-9639-117d7154423a",
-      "name": "LINE → Jerry",
+      "name": "LINE → Jerry1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -281,7 +281,7 @@
         "options": {}
       },
       "id": "ee43b1b1-a4a2-44d0-a4dc-016b5a231956",
-      "name": "Is ZH Source?1",
+      "name": "Is ZH Source?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
@@ -310,7 +310,7 @@
         "options": {}
       },
       "id": "dd4af1d6-a7f2-4892-8611-f0bdaf6dfaf3",
-      "name": "Translate to ZH1",
+      "name": "Translate to ZH",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -333,7 +333,7 @@
         "amount": 3
       },
       "id": "26eae195-7b78-4589-a177-032fd14d59aa",
-      "name": "Wait Job",
+      "name": "Wait Job1",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
@@ -370,7 +370,7 @@
         }
       },
       "id": "33ddd65f-6c79-46d2-a8c4-52ecb150f491",
-      "name": "Check Job",
+      "name": "Check Job1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -386,10 +386,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst prevItems = $('Wait Job').all();\nreturn items.map((it, i) => {\n  const prevAttempts = (prevItems[i] && prevItems[i].json.attempts) || 0;\n  return { json: { ...it.json, attempts: prevAttempts + 1 } };\n});"
+        "jsCode": "const items = $input.all();\nconst prevItems = $('Wait Job1').all();\nreturn items.map((it, i) => {\n  const prevAttempts = (prevItems[i] && prevItems[i].json.attempts) || 0;\n  return { json: { ...it.json, attempts: prevAttempts + 1 } };\n});"
       },
       "id": "4413690f-5e3a-49b8-a565-0c7656a9a4d3",
-      "name": "Track Attempt",
+      "name": "Track Attempt1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -422,7 +422,7 @@
         "options": {}
       },
       "id": "f4a81863-de14-41a8-945d-61989b869791",
-      "name": "Job Poll Gate",
+      "name": "Job Poll Gate1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
@@ -455,7 +455,7 @@
         "options": {}
       },
       "id": "3480c3b7-899f-4b2f-a5ab-c879cd6152c5",
-      "name": "Is Jerry?1",
+      "name": "Is Jerry?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
@@ -471,7 +471,7 @@
         "options": {}
       },
       "id": "f0e59ecf-1a6d-4b62-9ba7-4810f9fa3c1d",
-      "name": "Email → Recipient1",
+      "name": "Email → Recipient",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
@@ -492,7 +492,7 @@
         "options": {}
       },
       "id": "23305d3b-2f91-42d3-9f67-84dec8a07da4",
-      "name": "Split Out",
+      "name": "Split Out1",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
@@ -505,7 +505,7 @@
         "jsCode": "const items = $input.all();\nconst isTerminal = j => ['success','failed','aborted'].includes(j.status) || j.attempts >= 20;\nconst allDone = items.every(it => isTerminal(it.json));\nreturn items.map(it => ({ json: { ...it.json, allDone } }));"
       },
       "id": "85e9880b-edab-4f2c-bfdb-5891b26142a4",
-      "name": "Check All Done",
+      "name": "Check All Done1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -515,10 +515,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Prepare Data').first().json;\nconst photoUrls = d.photoUrls || [];\nconst pageId = $json.id;\n// No page id = \"Notion: Create Daily Log\" failed (it continues on fail); Build\n// Messages already warns Jerry about that, so just skip the photos.\nif (!photoUrls.length || !pageId || $json.error) return [];\nconst children = photoUrls.map(url => ({\n  object: 'block',\n  type: 'image',\n  image: { type: 'external', external: { url } }\n}));\nreturn [{ json: { pageId, children } }];"
+        "jsCode": "const d = $('Prepare Data1').first().json;\nconst photoUrls = d.photoUrls || [];\nconst pageId = $json.id;\n// No page id = \"Notion: Create Daily Log\" failed (it continues on fail); Build\n// Messages already warns Jerry about that, so just skip the photos.\nif (!photoUrls.length || !pageId || $json.error) return [];\nconst children = photoUrls.map(url => ({\n  object: 'block',\n  type: 'image',\n  image: { type: 'external', external: { url } }\n}));\nreturn [{ json: { pageId, children } }];"
       },
       "id": "7df4d677-48d6-44ea-a88c-37d860db6951",
-      "name": "Build Photo Blocks",
+      "name": "Build Photo Blocks1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -551,7 +551,7 @@
         "options": {}
       },
       "id": "467f98a2-35fc-4778-adff-271d384352a1",
-      "name": "Notion: Append Photos",
+      "name": "Notion: Append Photos1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -571,10 +571,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Prepare Data').first().json;\nconst genNode = $('Generate PDF HTML').first().json;\nconst dZH = genNode.translatedZH || d;\nconst translationFailed = genNode.geminiStatus !== 'success';\n\nconst variantOrigins = $('Split Out').all();\nconst driveUploads = $('Google Drive Upload').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveUrl = 'https://drive.google.com/file/d/' + driveUploads[idxOf('contractor')].json.id + '/view';\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveUploads[idxOf('zh')].json.id + '/view';\n\n// notionProjectUrls comes from index.html, resolved client-side from the\n// Google Sheets \"Notion工程連結\" column for each selected project.\nconst rawUrls = Array.isArray(d.notionProjectUrls) ? d.notionProjectUrls : String(d.notionProjectUrls || '').split(',');\nconst toPageId = url => {\n  const m = String(url || '').match(/([0-9a-f]{32})(?:[?#]|$)/i);\n  if (!m) return null;\n  const h = m[1];\n  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;\n};\nconst relatedWorkItemIds = rawUrls.map(toPageId).filter(Boolean);\nconst unmatchedCount = rawUrls.filter(u => String(u || '').trim() && !toPageId(u)).length;\n\nconst warnPrefix = translationFailed ? '⚠️ 自動翻譯失敗，以下為原文，請人工確認 / ' : '';\nconst unmatchedNote = unmatchedCount > 0\n  ? `⚠️ 有 ${unmatchedCount} 個工程在 Google Sheets 裡尚未設定 Notion 連結，Related Work Item 未自動關聯，請手動補上。\\n\\n`\n  : '';\n\nconst lbZ = (d.labels && d.labels.zh) || {};\n\nconst progressDesc = unmatchedNote + [\n  `${warnPrefix}施工部位：${d.constructionLocation || '-'}`,\n  `出工人數：${d.workers ?? '-'}人`,\n  `今日危險作業：${lbZ.risk ? '⚠️ ' : ''}${lbZ.hazard || '-'}`,\n  `填寫時間：${d.filledAtLocal || '-'}${d.lateEntry ? '（補填）' : ''}`,\n  '',\n  '今日施工項目：',\n  dZH.constructionItems || d.constructionItems || '-',\n  '',\n  '明日預計工作：',\n  dZH.tomorrowPlan || d.tomorrowPlan || '-',\n  '',\n  `供給材料：${dZH.materialsUsed || d.materialsUsed || '-'}`,\n  `機具使用：${dZH.equipment || d.equipment || '-'}`,\n  '',\n  `📥 承包商版 PDF: ${driveUrl}`,\n  `📥 中文版 PDF: ${driveUrlZH}`\n].join('\\n');\n\n// Notion caps one rich_text piece at 2000 characters (a longer one fails the\n// whole page), so long text is split into several pieces (max 100).\nconst richText = s => {\n  const str = String(s || '');\n  const parts = [];\n  for (let i = 0; i < str.length && parts.length < 100; i += 2000) parts.push({ type: 'text', text: { content: str.slice(i, i + 2000) } });\n  return parts;\n};\n// Select option names can't contain commas and are capped at 100 characters\nconst selectName = s => String(s || '').replace(/,/g, '，').trim().slice(0, 100);\nconst select = s => selectName(s) ? { select: { name: selectName(s) } } : { select: null };\nconst wxZH = code => ({ sunny: '晴天', rainy: '下雨', heavyRain: '大雨', strongWind: '強風', thunderstorm: '雷雨' }[code] || '');\nconst HZ_ZH = { none: '無危險作業', hotWork: '動火作業', lifting: '吊裝作業', height: '高空作業', confinedSpace: '局限空間作業' };\nconst workers = Number(d.workers);\n\n// Date + contractor + project so several logs on the same day are told apart.\nconst pageTitle = [d.date, d.contractor, d.projectName].filter(Boolean).join(' ').slice(0, 120) + ' 監工日誌';\n\nconst properties = {\n  '名稱': { title: richText(pageTitle) },\n  'Progress Desc': { rich_text: richText(progressDesc) },\n  'Issues Encountered': { rich_text: richText(`與廠商溝通協調記錄：${dZH.communication || d.communication || '無'}`) },\n  'Solutions Applied': { rich_text: richText(`其他重要事項記錄：${dZH.otherNotes || d.otherNotes || '無'}`) },\n  'Photo URLs': { rich_text: richText((d.photoUrls || []).join('\\n')) },\n  'Related Work Item': { relation: relatedWorkItemIds.map(id => ({ id })) },\n  'Contractor': select(d.contractor),\n  'Engineer': select(d.supervisor),\n  'Workers': { number: Number.isFinite(workers) && String(d.workers ?? '') !== '' ? workers : null },\n  'AM Weather': select(wxZH(d.morningWeather)),\n  'PM Weather': select(wxZH(d.afternoonWeather)),\n  'Hazardous Work': { multi_select: (d.hazardCodes || []).map(c => ({ name: HZ_ZH[c] })).filter(o => o.name) },\n  'Filled At': { rich_text: richText(d.filledAtLocal || '') },\n  'Late Entry': { checkbox: !!d.lateEntry },\n};\nif (d.date) properties['Log Date'] = { date: { start: d.date } };\n\nreturn [{\n  json: {\n    pageTitle,\n    relatedWorkItemIds,\n    // Request body for \"Notion: Create Daily Log\" (HTTP Request → POST /v1/pages)\n    body: {\n      parent: { type: 'data_source_id', data_source_id: '2190dd6f-6b0a-803a-b151-000bc01c3b86' },\n      properties\n    }\n  }\n}];"
+        "jsCode": "const d = $('Prepare Data1').first().json;\nconst genNode = $('Generate PDF HTML1').first().json;\nconst dZH = genNode.translatedZH || d;\nconst translationFailed = genNode.geminiStatus !== 'success';\n\nconst variantOrigins = $('Split Out1').all();\nconst driveUploads = $('Google Drive Upload1').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveUrl = 'https://drive.google.com/file/d/' + driveUploads[idxOf('contractor')].json.id + '/view';\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveUploads[idxOf('zh')].json.id + '/view';\n\n// notionProjectUrls comes from index.html, resolved client-side from the\n// Google Sheets \"Notion工程連結\" column for each selected project.\nconst rawUrls = Array.isArray(d.notionProjectUrls) ? d.notionProjectUrls : String(d.notionProjectUrls || '').split(',');\nconst toPageId = url => {\n  const m = String(url || '').match(/([0-9a-f]{32})(?:[?#]|$)/i);\n  if (!m) return null;\n  const h = m[1];\n  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;\n};\nconst relatedWorkItemIds = rawUrls.map(toPageId).filter(Boolean);\nconst unmatchedCount = rawUrls.filter(u => String(u || '').trim() && !toPageId(u)).length;\n\nconst warnPrefix = translationFailed ? '⚠️ 自動翻譯失敗，以下為原文，請人工確認 / ' : '';\nconst unmatchedNote = unmatchedCount > 0\n  ? `⚠️ 有 ${unmatchedCount} 個工程在 Google Sheets 裡尚未設定 Notion 連結，Related Work Item 未自動關聯，請手動補上。\\n\\n`\n  : '';\n\nconst lbZ = (d.labels && d.labels.zh) || {};\n\nconst progressDesc = unmatchedNote + [\n  `${warnPrefix}施工部位：${d.constructionLocation || '-'}`,\n  `出工人數：${d.workers ?? '-'}人`,\n  `今日危險作業：${lbZ.risk ? '⚠️ ' : ''}${lbZ.hazard || '-'}`,\n  `填寫時間：${d.filledAtLocal || '-'}${d.lateEntry ? '（補填）' : ''}`,\n  '',\n  '今日施工項目：',\n  dZH.constructionItems || d.constructionItems || '-',\n  '',\n  '明日預計工作：',\n  dZH.tomorrowPlan || d.tomorrowPlan || '-',\n  '',\n  `供給材料：${dZH.materialsUsed || d.materialsUsed || '-'}`,\n  `機具使用：${dZH.equipment || d.equipment || '-'}`,\n  '',\n  `📥 承包商版 PDF: ${driveUrl}`,\n  `📥 中文版 PDF: ${driveUrlZH}`\n].join('\\n');\n\n// Notion caps one rich_text piece at 2000 characters (a longer one fails the\n// whole page), so long text is split into several pieces (max 100).\nconst richText = s => {\n  const str = String(s || '');\n  const parts = [];\n  for (let i = 0; i < str.length && parts.length < 100; i += 2000) parts.push({ type: 'text', text: { content: str.slice(i, i + 2000) } });\n  return parts;\n};\n// Select option names can't contain commas and are capped at 100 characters\nconst selectName = s => String(s || '').replace(/,/g, '，').trim().slice(0, 100);\nconst select = s => selectName(s) ? { select: { name: selectName(s) } } : { select: null };\nconst wxZH = code => ({ sunny: '晴天', rainy: '下雨', heavyRain: '大雨', strongWind: '強風', thunderstorm: '雷雨' }[code] || '');\nconst HZ_ZH = { none: '無危險作業', hotWork: '動火作業', lifting: '吊裝作業', height: '高空作業', confinedSpace: '局限空間作業' };\nconst workers = Number(d.workers);\n\n// Date + contractor + project so several logs on the same day are told apart.\nconst pageTitle = [d.date, d.contractor, d.projectName].filter(Boolean).join(' ').slice(0, 120) + ' 監工日誌';\n\nconst properties = {\n  '名稱': { title: richText(pageTitle) },\n  'Progress Desc': { rich_text: richText(progressDesc) },\n  'Issues Encountered': { rich_text: richText(`與廠商溝通協調記錄：${dZH.communication || d.communication || '無'}`) },\n  'Solutions Applied': { rich_text: richText(`其他重要事項記錄：${dZH.otherNotes || d.otherNotes || '無'}`) },\n  'Photo URLs': { rich_text: richText((d.photoUrls || []).join('\\n')) },\n  'Related Work Item': { relation: relatedWorkItemIds.map(id => ({ id })) },\n  'Contractor': select(d.contractor),\n  'Engineer': select(d.supervisor),\n  'Workers': { number: Number.isFinite(workers) && String(d.workers ?? '') !== '' ? workers : null },\n  'AM Weather': select(wxZH(d.morningWeather)),\n  'PM Weather': select(wxZH(d.afternoonWeather)),\n  'Hazardous Work': { multi_select: (d.hazardCodes || []).map(c => ({ name: HZ_ZH[c] })).filter(o => o.name) },\n  'Filled At': { rich_text: richText(d.filledAtLocal || '') },\n  'Late Entry': { checkbox: !!d.lateEntry },\n};\nif (d.date) properties['Log Date'] = { date: { start: d.date } };\n\nreturn [{\n  json: {\n    pageTitle,\n    relatedWorkItemIds,\n    // Request body for \"Notion: Create Daily Log\" (HTTP Request → POST /v1/pages)\n    body: {\n      parent: { type: 'data_source_id', data_source_id: '2190dd6f-6b0a-803a-b151-000bc01c3b86' },\n      properties\n    }\n  }\n}];"
       },
       "id": "5953655c-0969-4e7a-89ac-5a8ed56e9c37",
-      "name": "Build Notion Payload",
+      "name": "Build Notion Payload1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -607,7 +607,7 @@
         "options": {}
       },
       "id": "724f4ee9-4c9d-455a-85bf-744ef1af7473",
-      "name": "Notion: Create Daily Log",
+      "name": "Notion: Create Daily Log1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -707,254 +707,254 @@
     ]
   },
   "connections": {
-    "Webhook": {
+    "Webhook1": {
       "main": [
         [
           {
-            "node": "Prepare Data",
+            "node": "Prepare Data1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare Data": {
+    "Prepare Data1": {
       "main": [
         [
           {
-            "node": "Is ZH Source?1",
+            "node": "Is ZH Source?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Generate PDF HTML": {
+    "Generate PDF HTML1": {
       "main": [
         [
           {
-            "node": "Split Out",
+            "node": "Split Out1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "PDF.co API": {
+    "PDF.co API1": {
       "main": [
         [
           {
-            "node": "Wait Job",
+            "node": "Wait Job1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Download PDF": {
+    "Download PDF1": {
       "main": [
         [
           {
-            "node": "Google Drive Upload",
+            "node": "Google Drive Upload1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Drive Upload": {
+    "Google Drive Upload1": {
       "main": [
         [
           {
-            "node": "Set Drive Permission",
+            "node": "Set Drive Permission1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Set Drive Permission": {
+    "Set Drive Permission1": {
       "main": [
         [
           {
-            "node": "Build Notion Payload",
+            "node": "Build Notion Payload1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build Messages": {
+    "Build Messages1": {
       "main": [
         [
           {
-            "node": "LINE → Contractor",
+            "node": "LINE → Contractor1",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Is Jerry?1",
+            "node": "Is Jerry?",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Email → Recipient1",
+            "node": "Email → Recipient",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Is ZH Source?1": {
+    "Is ZH Source?": {
       "main": [
         [
           {
-            "node": "Generate PDF HTML",
+            "node": "Generate PDF HTML1",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Translate to ZH1",
+            "node": "Translate to ZH",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Translate to ZH1": {
+    "Translate to ZH": {
       "main": [
         [
           {
-            "node": "Generate PDF HTML",
+            "node": "Generate PDF HTML1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Is Jerry?1": {
+    "Is Jerry?": {
       "main": [
         [
           {
-            "node": "LINE → Jerry",
+            "node": "LINE → Jerry1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Split Out": {
+    "Split Out1": {
       "main": [
         [
           {
-            "node": "PDF.co API",
+            "node": "PDF.co API1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait Job": {
+    "Wait Job1": {
       "main": [
         [
           {
-            "node": "Check Job",
+            "node": "Check Job1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Job": {
+    "Check Job1": {
       "main": [
         [
           {
-            "node": "Track Attempt",
+            "node": "Track Attempt1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Track Attempt": {
+    "Track Attempt1": {
       "main": [
         [
           {
-            "node": "Check All Done",
+            "node": "Check All Done1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check All Done": {
+    "Check All Done1": {
       "main": [
         [
           {
-            "node": "Job Poll Gate",
+            "node": "Job Poll Gate1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Job Poll Gate": {
+    "Job Poll Gate1": {
       "main": [
         [
           {
-            "node": "Download PDF",
+            "node": "Download PDF1",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Wait Job",
+            "node": "Wait Job1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build Photo Blocks": {
+    "Build Photo Blocks1": {
       "main": [
         [
           {
-            "node": "Notion: Append Photos",
+            "node": "Notion: Append Photos1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build Notion Payload": {
+    "Build Notion Payload1": {
       "main": [
         [
           {
-            "node": "Notion: Create Daily Log",
+            "node": "Notion: Create Daily Log1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Notion: Append Photos": {
+    "Notion: Append Photos1": {
       "main": [
         []
       ]
     },
-    "Notion: Create Daily Log": {
+    "Notion: Create Daily Log1": {
       "main": [
         [
           {
-            "node": "Build Photo Blocks",
+            "node": "Build Photo Blocks1",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Build Messages",
+            "node": "Build Messages1",
             "type": "main",
             "index": 0
           }
