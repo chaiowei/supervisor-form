@@ -19,13 +19,142 @@
     },
     {
       "parameters": {
-        "jsCode": "// The form sends one compressed JPEG per request as base64 (same shape it\n// used to send imgBB), plus a suggested file name.\nconst body = $input.first().json.body || $input.first().json;\nconst b64 = String(body.image || '');\nif (!b64) throw new Error('no image in request');\nconst safe = s => String(s || '').replace(/[\\\\/:*?\"<>|]/g, '_').slice(0, 80);\nconst fileName = safe(body.fileName) || `photo_${Date.now()}.jpg`;\nconst binary = await this.helpers.prepareBinaryData(Buffer.from(b64, 'base64'), fileName, 'image/jpeg');\nreturn [{ json: { fileName }, binary: { data: binary } }];"
+        "jsCode": "// Photos are filed in a sub-folder per project (工程名稱) inside the main photo\n// folder. A report can cover several projects (\"A, B\"); its photos go into the\n// first project's folder. No project → 未分類.\nconst PARENT_ID = '1wcJmQkM_lSpZW5Nw-1TPZ51Dq-BP1D37';\nconst body = $input.first().json.body || $input.first().json;\nconst first = String(body.projectName || '').split(', ').map(s => s.trim()).filter(Boolean)[0];\nconst folderName = (first || '未分類').replace(/[\\\\/]/g, '_').slice(0, 100);\n// Escape for the Drive search query string\nconst esc = folderName.replace(/\\\\/g, '\\\\\\\\').replace(/'/g, \"\\\\'\");\nconst q = `mimeType='application/vnd.google-apps.folder' and name='${esc}' and '${PARENT_ID}' in parents and trashed=false`;\nreturn [{ json: { folderName, parentId: PARENT_ID, q } }];"
+      },
+      "name": "Prepare Folder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.q }}"
+            },
+            {
+              "name": "fields",
+              "value": "files(id,name)"
+            },
+            {
+              "name": "orderBy",
+              "value": "createdTime"
+            },
+            {
+              "name": "pageSize",
+              "value": "10"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            },
+            {
+              "name": "includeItemsFromAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Drive: Find Project Folder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "tHegGlDXg7LOneTk",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "folder-exists-cond",
+              "leftValue": "={{ ($json.files || []).length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Folder Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { name: $('Prepare Folder').first().json.folderName, mimeType: 'application/vnd.google-apps.folder', parents: [$('Prepare Folder').first().json.parentId] } }}",
+        "options": {}
+      },
+      "name": "Drive: Create Project Folder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        140
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "tHegGlDXg7LOneTk",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// The form sends one compressed JPEG per request as base64 (same shape it\n// used to send imgBB), plus a suggested file name and the project name.\n// Input here is either the folder search result or the newly created folder.\nconst folder = $input.first().json;\nconst folderId = folder.files ? folder.files[0].id : folder.id;\nif (!folderId) throw new Error('no project folder id');\nconst body = $('Webhook (Photo)').first().json.body || $('Webhook (Photo)').first().json;\nconst b64 = String(body.image || '');\nif (!b64) throw new Error('no image in request');\nconst safe = s => String(s || '').replace(/[\\\\/:*?\"<>|]/g, '_').slice(0, 80);\nconst fileName = safe(body.fileName) || `photo_${Date.now()}.jpg`;\nconst binary = await this.helpers.prepareBinaryData(Buffer.from(b64, 'base64'), fileName, 'image/jpeg');\nreturn [{ json: { fileName, folderId }, binary: { data: binary } }];"
       },
       "name": "Decode Photo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
+        1100,
         0
       ]
     },
@@ -40,7 +169,7 @@
         },
         "folderId": {
           "__rl": true,
-          "value": "1wcJmQkM_lSpZW5Nw-1TPZ51Dq-BP1D37",
+          "value": "={{ $json.folderId }}",
           "mode": "id"
         },
         "options": {}
@@ -49,7 +178,7 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        440,
+        1320,
         0
       ],
       "credentials": {
@@ -83,7 +212,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        660,
+        1540,
         0
       ],
       "credentials": {
@@ -103,13 +232,64 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        880,
+        1760,
         0
       ]
     }
   ],
   "connections": {
     "Webhook (Photo)": {
+      "main": [
+        [
+          {
+            "node": "Prepare Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Folder": {
+      "main": [
+        [
+          {
+            "node": "Drive: Find Project Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Find Project Folder": {
+      "main": [
+        [
+          {
+            "node": "Folder Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Folder Exists?": {
+      "main": [
+        [
+          {
+            "node": "Decode Photo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive: Create Project Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: Create Project Folder": {
       "main": [
         [
           {

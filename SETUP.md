@@ -90,7 +90,10 @@ n8n Cloud：https://jerry-hsieh.app.n8n.cloud
 
 ## 照片儲存
 
-- 新照片：Google Drive「工作日誌 › 工程照片---from 廠商」（在 Supervisor Photo Upload → Drive: Upload Photo 設定資料夾）
+- 新照片：Google Drive「工作日誌 › 工程照片---from 廠商 › <工程名稱>」
+  - 每個工程一個子資料夾，第一次有該工程的照片時自動建立；一份報告勾選多個工程時，照片放在第一個工程的資料夾；沒有工程名稱的放「未分類」
+  - 上層資料夾 ID 寫在 Supervisor Photo Upload → Prepare Folder 的 `PARENT_ID`
+  - 不要手動把工程資料夾改名：改名後系統找不到，會再建一個新的同名資料夾
 - 檔名：`日期_廠商_時分秒_序號.jpg`
 - 舊 imgBB 照片已搬到同一資料夾（`imgbb_###.jpg` 與 `日期_序號.jpg`）；確認無誤後可到 imgBB 停用舊的 API Key
 
