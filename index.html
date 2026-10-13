@@ -176,6 +176,11 @@
       animation: spin 0.7s linear infinite; display: none;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .confirm-notice {
+      background: #fff8e1; border: 1px solid #f0c36d; color: #7a5200;
+      border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+      font-size: calc(14px * var(--fs)); font-weight: 600; line-height: 1.5;
+    }
     /* Result screens */
     .screen { display: none; text-align: center; padding: 48px 24px; }
     .screen-icon { font-size: calc(60px * var(--fs)); margin-bottom: 16px; }
@@ -442,9 +447,12 @@
     <!-- Confirm -->
     <div class="screen" id="confirmScreen" style="text-align:left;padding:20px 4px">
       <div class="sec-title" id="confirmTitleLbl" style="border:none;margin-bottom:10px">Please Confirm</div>
-      <div class="card" id="confirmSummary"></div>
+      <!-- Buttons sit above the summary: people scrolled the long summary, never
+           reached the button and closed the page thinking the report was sent. -->
+      <div class="confirm-notice" id="confirmNotice">The report has NOT been sent yet. Tap "Confirm &amp; Send" to finish.</div>
       <button type="button" class="submit-btn" id="confirmSendBtn" onclick="proceedSubmit()">Confirm &amp; Send</button>
-      <button type="button" class="retry-btn" id="confirmBackBtn" style="width:100%;margin-top:10px;background:#eee;color:#333" onclick="showScreen('theForm')">Back to Edit</button>
+      <button type="button" class="retry-btn" id="confirmBackBtn" style="width:100%;margin:10px 0 14px;background:#eee;color:#333" onclick="showScreen('theForm')">Back to Edit</button>
+      <div class="card" id="confirmSummary"></div>
     </div>
 
     <!-- Progress -->
@@ -498,7 +506,9 @@
       <div class="screen-title" id="errorTitle">Submission Failed</div>
       <div class="screen-msg" id="errorMsg">Please try again. If the problem persists, contact your supervisor.</div>
       <div class="screen-msg" id="errorDetail" style="color:#e53e3e;margin-top:10px;display:none;white-space:pre-line"></div>
+      <div class="screen-msg" id="errorReported" style="margin-top:10px;font-size:calc(12px * var(--fs))">This error has been reported to the engineer automatically.</div>
       <button class="retry-btn" id="retryBtn" style="width:100%" onclick="retryForm()">Resubmit</button>
+      <button type="button" class="retry-btn" id="skipPhotosBtn" style="width:100%;margin-top:10px;background:#f0a020;display:none" onclick="skipFailedPhotos()">Skip failed photos &amp; send</button>
       <button type="button" class="retry-btn" id="errorBackBtn" style="width:100%;margin-top:10px;background:#eee;color:#333" onclick="showScreen('theForm')">Back to Edit</button>
     </div>
   </div>
@@ -525,6 +535,8 @@ const CFG = {
   N8N_WEBHOOK_URL:  'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report',
   // Photos are saved to Google Drive by the "Supervisor Photo Upload" n8n workflow
   PHOTO_UPLOAD_URL: 'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-photo',
+  // Errors users hit are sent here ("Supervisor Form Error Report" n8n workflow → LINE to Jerry)
+  ERROR_REPORT_URL: 'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-form-error',
   MAX_PHOTOS: 10,
   PHOTO_MAX_PX: 1280,
   PHOTO_QUALITY: 0.70,
@@ -617,6 +629,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     supSel.disabled = false;
   } catch (e) {
     console.warn('[form-options] fetch failed, using empty lists:', e.message);
+    reportError('options_load_failed', e.message);
     const supSel = document.getElementById('sel-supervisor');
     supSel.innerHTML = '';
     const blank = document.createElement('option');
@@ -771,6 +784,10 @@ const T = {
     draftRestoreBtn: 'Restore Draft',
     draftDiscardBtn: 'Discard',
     optionsWarnMsg: '⚠️ Failed to load dropdown options (supervisor / project / contractor). Please check your connection or contact your supervisor.',
+    confirmNotice: 'The report has NOT been sent yet. Tap "Confirm & Send" to finish.',
+    skipPhotosBtn: 'Skip failed photos & send',
+    skipPhotosConfirm: (n, t) => `${n} of ${t} photo(s) will NOT be in the report. Send the report without them?`,
+    errorReported: 'This error has been reported to the engineer automatically.',
     photoConverting: (i, n) => `⏳ Converting HEIC photo ${i}/${n}... please wait`,
     photoBusy: 'Photos are still being processed. Please wait a moment and try again.',
     photoUnreadable: (n) => `⚠️ ${n} photo(s) could not be read and were not added. If the photo is stored only in the cloud (Google Photos), download it to the phone first, or take the photo again.`,
@@ -846,6 +863,10 @@ const T = {
     draftRestoreBtn: 'กู้คืนร่าง',
     draftDiscardBtn: 'ล้างข้อมูล',
     optionsWarnMsg: '⚠️ โหลดตัวเลือก (ผู้ควบคุมงาน/โครงการ/ผู้รับเหมา) ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือติดต่อผู้ควบคุมงาน',
+    confirmNotice: 'รายงานยังไม่ได้ถูกส่ง! กรุณากด "ยืนยันและส่ง" เพื่อให้เสร็จสิ้น',
+    skipPhotosBtn: 'ข้ามรูปที่อัปโหลดไม่สำเร็จแล้วส่งรายงาน',
+    skipPhotosConfirm: (n, t) => `รูป ${n} จาก ${t} รูปจะไม่อยู่ในรายงาน ต้องการส่งรายงานโดยไม่มีรูปเหล่านี้หรือไม่?`,
+    errorReported: 'ระบบได้แจ้งข้อผิดพลาดนี้ไปยังวิศวกรโดยอัตโนมัติแล้ว',
     photoConverting: (i, n) => `⏳ กำลังแปลงรูป HEIC ${i}/${n}... กรุณารอสักครู่`,
     photoBusy: 'ระบบกำลังประมวลผลรูปภาพ กรุณารอสักครู่แล้วลองอีกครั้ง',
     photoUnreadable: (n) => `⚠️ มี ${n} รูปที่อ่านไม่ได้และไม่ได้ถูกเพิ่ม หากรูปเก็บไว้บนคลาวด์ (Google Photos) กรุณาดาวน์โหลดลงเครื่องก่อน หรือถ่ายรูปใหม่`,
@@ -921,6 +942,10 @@ const T = {
     draftRestoreBtn: '恢復草稿',
     draftDiscardBtn: '清除草稿',
     optionsWarnMsg: '⚠️ 選項載入失敗（負責工程師/工程名稱/施工廠商），請確認網路連線或聯絡管理員',
+    confirmNotice: '報告還沒送出！請按「確認送出」才算完成。',
+    skipPhotosBtn: '略過失敗的照片，直接送出報告',
+    skipPhotosConfirm: (n, t) => `${t} 張照片中有 ${n} 張不會出現在報告裡，確定要不含這些照片送出嗎？`,
+    errorReported: '此錯誤已自動回報給負責工程師。',
     photoConverting: (i, n) => `⏳ 正在轉換 HEIC 照片 ${i}/${n}，請稍候…`,
     photoBusy: '照片還在處理中，請稍候再按送出。',
     photoUnreadable: (n) => `⚠️ 有 ${n} 張照片無法讀取，沒有加入。若照片只存在雲端（Google 相簿），請先下載到手機，或重新拍攝。`,
@@ -939,6 +964,82 @@ let lineUserId = null;
 let lineDisplayName = null;
 let currentPct = 0;
 
+// ── Error reporting ─────────────────────────────────────────
+// Problems users hit on site (photo can't be read, upload/submit failed, script
+// errors) are sent to n8n, which forwards them to Jerry on LINE, so they can be
+// fixed without having to ask the user what happened. Reports that can't be
+// sent (usually the very network problem being reported) are kept on the phone
+// and sent the next time the form is opened or the connection comes back.
+const ERR_QUEUE_KEY = 'wl_err_queue';
+let errorReportsThisPage = 0; // cap so one broken loop can't flood LINE
+
+function reportError(kind, message, extra = {}) {
+  if (errorReportsThisPage >= 8) return;
+  errorReportsThisPage++;
+  let fd = {};
+  try { fd = Object.fromEntries(new FormData(document.getElementById('theForm')).entries()); } catch (e) {}
+  const report = {
+    kind,
+    message: String(message || '').slice(0, 1000),
+    extra,
+    supervisor: fd.supervisor || '',
+    contractor: fd.contractor || '',
+    projectName: fd.projectName || '',
+    reportDate: fd.date || '',
+    photoCount: photoFiles.length,
+    submissionId,
+    lineUserId,
+    lineDisplayName,
+    language: lang,
+    online: navigator.onLine,
+    userAgent: navigator.userAgent,
+    at: new Date().toISOString(),
+  };
+  sendErrorReports([report]);
+}
+
+function loadErrorQueue() {
+  try { return JSON.parse(localStorage.getItem(ERR_QUEUE_KEY) || '[]'); } catch (e) { return []; }
+}
+function saveErrorQueue(q) {
+  try { localStorage.setItem(ERR_QUEUE_KEY, JSON.stringify(q.slice(-20))); } catch (e) {}
+}
+
+async function sendErrorReports(reports) {
+  const failed = [];
+  for (const r of reports) {
+    try {
+      const res = await fetch(CFG.ERROR_REPORT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(r),
+        keepalive: true,
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    } catch (e) {
+      failed.push(r);
+    }
+  }
+  if (failed.length) saveErrorQueue(loadErrorQueue().concat(failed));
+}
+
+function flushErrorQueue() {
+  const q = loadErrorQueue();
+  if (!q.length) return;
+  saveErrorQueue([]);
+  sendErrorReports(q);
+}
+
+window.addEventListener('online', flushErrorQueue);
+window.addEventListener('error', e => {
+  // Cross-origin script errors arrive as a bare "Script error." with no detail
+  if (!e.message || e.message === 'Script error.') return;
+  reportError('js_error', e.message, { source: `${e.filename || ''}:${e.lineno || ''}:${e.colno || ''}`, stack: String(e.error?.stack || '').slice(0, 800) });
+});
+window.addEventListener('unhandledrejection', e => {
+  reportError('js_error', String(e.reason?.message || e.reason || 'unhandled rejection'), { stack: String(e.reason?.stack || '').slice(0, 800) });
+});
+
 // ── Init ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   applyFontScale();
@@ -946,6 +1047,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelector('[name="date"]').value = new Date().toISOString().split('T')[0];
   checkDraft();
   await initLiff();
+  flushErrorQueue(); // after LIFF so lineUserId is set for new reports
 });
 
 async function initLiff() {
@@ -1018,7 +1120,7 @@ function applyLang() {
     'opt-sel','w-sunny-1','w-rainy-1','w-sunny-2','w-rainy-2',
     'submitLabel','successTitle','successMsg','errorTitle','errorMsg','retryBtn','errorBackBtn','langBtn',
     'progressTitle','step-photos-label','step-submit-label','step-process-label',
-    'confirmTitleLbl','confirmSendBtn','confirmBackBtn',
+    'confirmTitleLbl','confirmSendBtn','confirmBackBtn','confirmNotice','skipPhotosBtn','errorReported',
     'msTitle','msCancelBtn','msConfirmBtn'
   ];
   ids.forEach(id => {
@@ -1066,7 +1168,7 @@ async function processPickedPhotos(files) {
   const t = T[lang];
   const slots = CFG.MAX_PHOTOS - photoFiles.length;
   if (files.length > slots) alert(t.photoOverLimit(CFG.MAX_PHOTOS));
-  let unreadable = 0;
+  const unreadable = [];
   const picked = files.slice(0, Math.max(0, slots));
   const heicTotal = (await Promise.all(picked.map(looksLikeHeic))).filter(Boolean).length;
   let heicDone = 0;
@@ -1074,17 +1176,22 @@ async function processPickedPhotos(files) {
     let file = f;
     if (!(await canDecodeImage(f))) {
       file = null;
+      let reason = 'browser cannot decode image';
       if (await looksLikeHeic(f)) {
         setPhotoStatus(t.photoConverting(++heicDone, heicTotal));
-        try { file = await convertHeicToJpeg(f); } catch (e) { console.warn('HEIC convert failed', e); }
+        try { file = await convertHeicToJpeg(f); } catch (e) { console.warn('HEIC convert failed', e); reason = 'HEIC convert failed: ' + (e?.message || e); }
       }
+      if (!file) unreadable.push({ name: f.name, type: f.type, sizeKB: Math.round(f.size / 1024), reason });
     }
-    if (!file) { unreadable++; continue; }
+    if (!file) continue;
     photoFiles.push(file);
     showThumb(file, photoFiles.length - 1);
   }
   setPhotoStatus('');
-  if (unreadable) alert(t.photoUnreadable(unreadable));
+  if (unreadable.length) {
+    reportError('photo_unreadable', `${unreadable.length} photo(s) could not be read`, { files: unreadable });
+    alert(t.photoUnreadable(unreadable.length));
+  }
 }
 
 function setPhotoStatus(msg) {
@@ -1459,6 +1566,17 @@ function renderErrorDetail() {
     ? T[lang].photoFailBlock(lastPhotoFail.failed, lastPhotoFail.total) + (lastPhotoFail.reason ? `\n(${lastPhotoFail.reason})` : '')
     : '';
   el.style.display = lastPhotoFail ? 'block' : 'none';
+  document.getElementById('skipPhotosBtn').style.display = lastPhotoFail ? 'block' : 'none';
+}
+
+// "Skip failed photos": send the report with only the photos that already
+// uploaded, instead of making the user retry a photo that keeps failing.
+let skipFailedPhotosOnce = false;
+function skipFailedPhotos() {
+  if (!lastPhotoFail) return;
+  if (!confirm(T[lang].skipPhotosConfirm(lastPhotoFail.failed, lastPhotoFail.total))) return;
+  skipFailedPhotosOnce = true;
+  proceedSubmit();
 }
 
 async function proceedSubmit() {
@@ -1481,7 +1599,10 @@ async function proceedSubmit() {
 
   let processInterval = null;
   let failedPhotoCount = 0;
+  let skippedPhotoCount = 0;
   let firstPhotoError = '';
+  const skipFailed = skipFailedPhotosOnce;
+  skipFailedPhotosOnce = false;
   lastPhotoFail = null;
   renderErrorDetail();
   try {
@@ -1489,7 +1610,13 @@ async function proceedSubmit() {
     const hasPhotos = photoFiles.length > 0;
     const photoSpan = hasPhotos ? 45 : 0; // % of the bar reserved for photo uploads
     let photoUrls = [];
-    if (hasPhotos) {
+    if (hasPhotos && skipFailed) {
+      // Use only photos uploaded on an earlier attempt; don't retry the rest
+      photoUrls = photoFiles.filter(f => uploadedUrlCache.has(f)).map(f => uploadedUrlCache.get(f));
+      skippedPhotoCount = photoFiles.length - photoUrls.length;
+      reportError('photos_skipped', `user skipped ${skippedPhotoCount} of ${photoFiles.length} photo(s) that failed to upload`);
+      setProgress(photoSpan);
+    } else if (hasPhotos) {
       setStep('photos', 'active', `0/${photoFiles.length}`);
       // Drive file name: date_contractor_HHMMSS_01.jpg — groups a report's photos
       // together and keeps two same-day reports from the same contractor apart.
@@ -1505,6 +1632,14 @@ async function proceedSubmit() {
       photoUrls = results.filter(r => r.ok).map(r => r.url);
       failedPhotoCount = results.filter(r => !r.ok).length;
       firstPhotoError = String(results.find(r => !r.ok)?.error?.message || '');
+      if (failedPhotoCount) {
+        reportError('photo_upload_failed', `${failedPhotoCount} of ${photoFiles.length} photo(s) failed to upload`, {
+          photos: results.map((r, i) => r.ok ? null : {
+            index: i + 1, name: photoFiles[i].name, type: photoFiles[i].type,
+            sizeKB: Math.round(photoFiles[i].size / 1024), error: String(r.error?.message || r.error || '')
+          }).filter(Boolean)
+        });
+      }
     }
     setStep('photos', failedPhotoCount ? 'error' : 'done',
       hasPhotos ? `${photoUrls.length}/${photoFiles.length}` : t.noPhotos);
@@ -1528,6 +1663,7 @@ async function proceedSubmit() {
       submittedAt: new Date().toISOString(),
       photoUrls,
       photoCount: photoUrls.length,
+      skippedPhotoCount,
       notionProjectUrls: selectedProjects.map(p => projectNotionUrlMap[p] || ''),
     };
     const fetchPromise = fetch(CFG.N8N_WEBHOOK_URL, {
@@ -1562,6 +1698,8 @@ async function proceedSubmit() {
     setTimeout(() => showScreen('successScreen'), 400);
   } catch (err) {
     console.error('Submit error:', err);
+    // Photo failures were already reported above with per-photo detail
+    if (!failedPhotoCount) reportError('submit_failed', err?.message || String(err));
     if (processInterval) clearInterval(processInterval);
     if (!failedPhotoCount) setStep('process', 'error');
     setProgressError();
