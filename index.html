@@ -577,7 +577,7 @@
 // Bump on every change to this file. The LINE in-app browser keeps serving a
 // cached copy of the page for a long time after an update; checkForUpdate()
 // compares this against the live file and reloads when they differ.
-const APP_VERSION = '2026-10-13.3';
+const APP_VERSION = '2026-10-13.4';
 
 const CFG = {
   LIFF_ID:          '2010536222-MhPB41l8',
@@ -1440,6 +1440,10 @@ async function processPickedPhotos(files) {
       if (await looksLikeHeic(f)) {
         setPhotoStatus(t.photoConverting(++heicDone, heicTotal));
         try { file = await convertHeicToJpeg(f); } catch (e) { console.warn('HEIC convert failed', e); reason = 'HEIC convert failed: ' + (e?.message || e); }
+      } else {
+        const r = await recoverUndecodable(f);
+        file = r.file;
+        reason = 'browser cannot decode image; ' + r.detail;
       }
       if (!file) unreadable.push({ name: f.name, type: f.type, sizeKB: Math.round(f.size / 1024), reason });
     }
@@ -1458,6 +1462,51 @@ function setPhotoStatus(msg) {
   const el = document.getElementById('photoStatus');
   el.textContent = msg;
   el.style.display = msg ? 'block' : 'none';
+}
+
+// A photo the <img> decoder rejected that isn't HEIC. Seen on Android 16
+// (Samsung, LINE webview) with ordinary .jpg files from the system photo
+// picker: the picker hands over a stream the image decoder can't read
+// directly, while the bytes themselves are fine. So: copy the bytes into
+// memory and try again, then try createImageBitmap (a different decoder) and
+// re-encode to JPEG. The detail string (bytes read, file header) goes into the
+// error report so the remaining cases can be diagnosed.
+async function recoverUndecodable(f) {
+  let bytes;
+  try { bytes = await f.arrayBuffer(); }
+  catch (e) { return { file: null, detail: 'cannot read file bytes (' + (e?.message || e) + ') — probably cloud-only / not on the phone' }; }
+  const head = Array.from(new Uint8Array(bytes.slice(0, 12))).map(b => b.toString(16).padStart(2, '0')).join(' ');
+  const info = `read ${Math.round(bytes.byteLength / 1024)}KB, header ${head || '(empty)'}`;
+  if (!bytes.byteLength) return { file: null, detail: info + ' — file is empty' };
+  const name = (f.name || 'photo').replace(/\.[^.]*$/, '') + '.jpg';
+  const copy = new File([bytes], name, { type: f.type || 'image/jpeg' });
+  if (await canDecodeImage(copy)) return { file: copy, detail: info + ' — recovered from in-memory copy' };
+  try {
+    const jpg = await reencodeViaBitmap(copy);
+    if (jpg && await canDecodeImage(jpg)) return { file: jpg, detail: info + ' — recovered via createImageBitmap' };
+  } catch (e) {
+    return { file: null, detail: info + '; createImageBitmap failed: ' + (e?.message || e) };
+  }
+  return { file: null, detail: info };
+}
+
+async function reencodeViaBitmap(file) {
+  if (!window.createImageBitmap) throw new Error('createImageBitmap unsupported');
+  const bmp = await createImageBitmap(file);
+  let w = bmp.width, h = bmp.height;
+  const M = CFG.PHOTO_MAX_PX;
+  if (w > M || h > M) {
+    if (w >= h) { h = Math.round(h * M / w); w = M; }
+    else { w = Math.round(w * M / h); h = M; }
+  }
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  bmp.close && bmp.close();
+  const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.9));
+  c.width = c.height = 0;
+  if (!blob || !blob.size) throw new Error('re-encode produced empty image');
+  return new File([blob], (file.name || 'photo').replace(/\.[^.]*$/, '') + '.jpg', { type: 'image/jpeg' });
 }
 
 function canDecodeImage(file) {
