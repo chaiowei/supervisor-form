@@ -38,7 +38,7 @@ n8n「Supervisor Daily Report v2」（webhook: supervisor-report）
 | `privacy.html` | 隱私權政策頁（Google OAuth 正式版需要） |
 | `Supervisor Daily Report v2.json` | n8n 主流程匯出檔 |
 | `Supervisor Photo Upload.json` | n8n 照片上傳流程（照片 → Google Drive） |
-| `Supervisor Error Notification.json` | n8n 錯誤通知流程 |
+| `Supervisor Error Notification.json` | n8n 錯誤通知流程：① n8n 流程出錯（Error Trigger）② 填寫者手機上發生的錯誤（webhook `supervisor-form-error`），都用 LINE 通知 Jerry |
 | `Migrate imgBB Photos to Drive.json` | 一次性流程：把舊 imgBB 照片搬到 Drive（已用不到，保留備查） |
 | `n8n-snippets/*.js` | 主流程各 Code 節點的最新程式碼，修改 n8n 時直接整段貼上 |
 | `LINE Form Options 2.json` | 舊版主流程備份（名稱有誤，非選項流程） |
@@ -71,8 +71,8 @@ n8n Cloud：https://jerry-hsieh.app.n8n.cloud
 | 流程 | 狀態 | 需要的憑證 |
 |------|------|-----------|
 | Supervisor Daily Report v2（ID `OCwh63R7TRuPgdDj`） | Active | Google Drive account、Notion work、Gmail account、LINE（Header Auth `Authorization: Bearer <channel access token>`）、PDF.co、Gemini |
-| Supervisor Photo Upload | Active | Google Drive account |
-| Supervisor Error Notification | Active，並在主流程 Settings → Error workflow 指定 | LINE |
+| Supervisor Photo Upload（ID `Ld4gtljkJtYW3wkk`） | Active | Google Drive account |
+| Supervisor Error Notification（ID `LhO1L9YtYPahglea`） | Active，並在主流程 Settings → Error workflow 指定；同時接收表單錯誤回報（webhook `supervisor-form-error`） | LINE |
 
 **Google Drive／Gmail 授權不會每 7 天過期的前提：** Google Cloud（My First Project）→ Google Auth Platform → 目標對象 → 發布狀態必須是「**實際運作中**」。若改回「測試」，授權會每 7 天失效，照片會全部上傳失敗、報告送不出去。
 
@@ -90,7 +90,10 @@ n8n Cloud：https://jerry-hsieh.app.n8n.cloud
 
 ## 照片儲存
 
-- 新照片：Google Drive「工作日誌 › 工程照片---from 廠商」（在 Supervisor Photo Upload → Drive: Upload Photo 設定資料夾）
+- 新照片：Google Drive「工作日誌 › 工程照片---from 廠商 › <工程名稱>」
+  - 每個工程一個子資料夾，第一次有該工程的照片時自動建立；一份報告勾選多個工程時，照片放在第一個工程的資料夾；沒有工程名稱的放「未分類」
+  - 上層資料夾 ID 寫在 Supervisor Photo Upload → Prepare Folder 的 `PARENT_ID`
+  - 不要手動把工程資料夾改名：改名後系統找不到，會再建一個新的同名資料夾
 - 檔名：`日期_廠商_時分秒_序號.jpg`
 - 舊 imgBB 照片已搬到同一資料夾（`imgbb_###.jpg` 與 `日期_序號.jpg`）；確認無誤後可到 imgBB 停用舊的 API Key
 
