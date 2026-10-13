@@ -994,8 +994,19 @@ function reportError(kind, message, extra = {}) {
     online: navigator.onLine,
     userAgent: navigator.userAgent,
     at: new Date().toISOString(),
+    localTime: localTimeString(new Date()), // shown as-is in the LINE message
   };
   sendErrorReports([report]);
+}
+
+// "2026/10/13 11:30:05 (Asia/Bangkok, UTC+7)" in the phone's own time zone
+function localTimeString(d) {
+  const p2 = n => String(n).padStart(2, '0');
+  const off = -d.getTimezoneOffset();
+  const offStr = 'UTC' + (off >= 0 ? '+' : '-') + Math.floor(Math.abs(off) / 60) + (Math.abs(off) % 60 ? ':' + p2(Math.abs(off) % 60) : '');
+  let tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+  return `${d.getFullYear()}/${p2(d.getMonth() + 1)}/${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())} (${tz ? tz + ', ' : ''}${offStr})`;
 }
 
 function loadErrorQueue() {
