@@ -34,7 +34,7 @@ n8n「Supervisor Daily Report v2」（webhook: supervisor-report）
 
 | 檔案 | 用途 |
 |------|------|
-| `index.html` | LIFF 表單（GitHub Pages 直接發布 master 分支） |
+| `index.html` | LIFF 表單（GitHub Pages 直接發布 master 分支）。每次修改都要更新 `APP_VERSION`，LINE 才會自動載入新版；頁面最下方會顯示版本號 |
 | `privacy.html` | 隱私權政策頁（Google OAuth 正式版需要） |
 | `Supervisor Daily Report v2.json` | n8n 主流程匯出檔 |
 | `Supervisor Photo Upload.json` | n8n 照片上傳流程（照片 → Google Drive） |

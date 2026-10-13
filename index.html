@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache">
   <title>Daily Work Log / บันทึกงานประจำวัน</title>
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
@@ -181,6 +182,7 @@
       border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
       font-size: calc(14px * var(--fs)); font-weight: 600; line-height: 1.5;
     }
+    .app-version { text-align: center; font-size: 11px; color: #aaa; margin-top: 16px; }
     /* Result screens */
     .screen { display: none; text-align: center; padding: 48px 24px; }
     .screen-icon { font-size: calc(60px * var(--fs)); margin-bottom: 16px; }
@@ -512,6 +514,7 @@
       <button type="button" class="retry-btn" id="errorBackBtn" style="width:100%;margin-top:10px;background:#eee;color:#333" onclick="showScreen('theForm')">Back to Edit</button>
     </div>
   </div>
+  <div class="app-version" id="appVersion"></div>
 </div>
 
 <!-- Project multi-select popup -->
@@ -530,6 +533,11 @@
 // ═══════════════════════════════════════════════════════════
 //  CONFIGURATION — fill in before deploying
 // ═══════════════════════════════════════════════════════════
+// Bump on every change to this file. The LINE in-app browser keeps serving a
+// cached copy of the page for a long time after an update; checkForUpdate()
+// compares this against the live file and reloads when they differ.
+const APP_VERSION = '2026-10-13.2';
+
 const CFG = {
   LIFF_ID:          '2010536222-MhPB41l8',
   N8N_WEBHOOK_URL:  'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-report',
@@ -1051,11 +1059,39 @@ window.addEventListener('unhandledrejection', e => {
   reportError('js_error', String(e.reason?.message || e.reason || 'unhandled rejection'), { stack: String(e.reason?.stack || '').slice(0, 800) });
 });
 
+// ── Stale-page check ─────────────────────────────────────
+// Fetch the live page bypassing every cache; if its APP_VERSION differs, reload
+// with a new ?_v= so the browser can't hand back the cached copy. Skipped once
+// the user has started filling in the form, and tried once per version so a
+// slow-to-update CDN can't cause a reload loop.
+let formTouched = false;
+document.addEventListener('input', () => { formTouched = true; }, { once: true });
+
+async function checkForUpdate() {
+  try {
+    const res = await fetch(location.pathname + '?_v=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const live = ((await res.text()).match(/const APP_VERSION = '([^']+)'/) || [])[1];
+    if (!live || live === APP_VERSION || formTouched || photoFiles.length) return;
+    let tried = null;
+    try { tried = sessionStorage.getItem('wl_reload_for'); } catch (e) {}
+    if (tried === live) return;
+    try { sessionStorage.setItem('wl_reload_for', live); } catch (e) {}
+    const url = new URL(location.href);
+    url.searchParams.set('_v', live);
+    location.replace(url.toString());
+  } catch (e) {
+    console.warn('update check failed', e);
+  }
+}
+
 // ── Init ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   applyFontScale();
   applyLang();
   document.querySelector('[name="date"]').value = new Date().toISOString().split('T')[0];
+  document.getElementById('appVersion').textContent = 'v' + APP_VERSION;
+  checkForUpdate();
   checkDraft();
   await initLiff();
   flushErrorQueue(); // after LIFF so lineUserId is set for new reports
