@@ -1,6 +1,6 @@
 # LINE 監工日誌系統 — 設定指引
 
-> 最後更新：2026-10-05
+> 最後更新：2026-10-13
 
 ---
 
@@ -19,7 +19,7 @@ n8n「Supervisor Daily Report v2」（webhook: supervisor-report）
     ├─ Prepare Data — 整理資料；同一個 submissionId 重複送出時直接略過（防重複報告）
     ├─ Translate to ZH — 泰／英文才翻譯（Gemini），中文直接跳過
     ├─ Generate PDF HTML → PDF.co → Google Drive（承包商語言版 + 中文版）
-    ├─ Build Notion Payload → Notion: Create Daily Log（Daily Work Logs 資料庫）
+    ├─ Build Notion Payload → Notion: Create Daily Log（HTTP Request → Notion API，寫入 Daily Work Logs 資料庫）
     │     ├─ Build Photo Blocks → Notion: Append Photos（照片直接顯示在頁面裡）
     │     └─ Build Messages
     │           ├─ LINE → Contractor（承包商語言版：下載 PDF／分享）
@@ -40,7 +40,8 @@ n8n「Supervisor Daily Report v2」（webhook: supervisor-report）
 | `Supervisor Photo Upload.json` | n8n 照片上傳流程（照片 → Google Drive） |
 | `Supervisor Error Notification.json` | n8n 錯誤通知流程：① n8n 流程出錯（Error Trigger）② 填寫者手機上發生的錯誤（webhook `supervisor-form-error`），都用 LINE 通知 Jerry |
 | `Migrate imgBB Photos to Drive.json` | 一次性流程：把舊 imgBB 照片搬到 Drive（已用不到，保留備查） |
-| `n8n-snippets/*.js` | 主流程各 Code 節點的最新程式碼，修改 n8n 時直接整段貼上 |
+| `n8n-snippets/*.js` | 主流程各 Code 節點的最新程式碼（Prepare Data、Generate PDF HTML、Build Notion Payload、Build Messages、Build Photo Blocks），修改 n8n 時直接整段貼上 |
+| `n8n-snippets/Notion Create Daily Log (node).json` | `Notion: Create Daily Log` HTTP Request 節點，可複製後在 n8n 畫布 Ctrl+V 貼上 |
 | `LINE Form Options 2.json` | 舊版主流程備份（名稱有誤，非選項流程） |
 
 > repo 裡的 n8n JSON 是備份，**實際運作的是 n8n 上的版本**。改了 n8n 之後記得同步回 repo（匯出或請 Claude 更新）。
@@ -76,7 +77,10 @@ n8n Cloud：https://jerry-hsieh.app.n8n.cloud
 
 **Google Drive／Gmail 授權不會每 7 天過期的前提：** Google Cloud（My First Project）→ Google Auth Platform → 目標對象 → 發布狀態必須是「**實際運作中**」。若改回「測試」，授權會每 7 天失效，照片會全部上傳失敗、報告送不出去。
 
-**Notion：** 「Daily Work Logs」資料庫與 Work Items 資料庫都要在 Notion 的 Connections 分享給 n8n 使用的 integration（目前叫「工作首頁」），否則會 404。資料庫網址用 URL 模式填，別誤填 Data Source ID。
+**Notion：** 「Daily Work Logs」資料庫與 Work Items 資料庫都要在 Notion 的 Connections 分享給 n8n 使用的 integration（目前叫「工作首頁」），否則會 404。
+- 建立頁面用 HTTP Request 呼叫 Notion API（`Notion-Version: 2025-09-03`），parent 是 Daily Work Logs 的 **Data Source ID** `2190dd6f-6b0a-803a-b151-000bc01c3b86`（寫在 `Build Notion Payload.js`）。
+- 寫入的欄位：名稱、Log Date、Progress Desc、Issues Encountered、Solutions Applied、Photo URLs、Related Work Item、Contractor、Engineer、Workers、AM Weather、PM Weather、Hazardous Work、Filled At、Late Entry。**不要改這些欄位的名稱**，改了要同步改 `Build Notion Payload.js`。
+- Contractor／Engineer 的選項會在第一次出現新名稱時自動建立（名稱中的逗號會換成全形「，」）。
 
 ---
 
@@ -105,5 +109,6 @@ n8n Cloud：https://jerry-hsieh.app.n8n.cloud
 |------|---------|
 | 表單顯示「照片上傳失敗」 | Google Drive 授權失效（n8n → Credentials → Google Drive account 重新連結）、Supervisor Photo Upload 沒有 Active、工地網路不穩（錯誤頁紅字下方有原因） |
 | 表單成功但沒收到 LINE | LINE 官方帳號當月推播額度用完、承包商沒加官方帳號好友；n8n Executions 可看細節 |
-| Notion 沒有新頁面 | Notion integration 沒分享到資料庫；LINE 仍會照常發送（只是少了 Notion 按鈕） |
+| Notion 沒有新頁面 | Jerry 的 LINE 會出現紅字「⚠️ Notion 寫入失敗」、Email 附錯誤原因。常見原因：integration 沒分享到資料庫、Notion 欄位被改名或刪除。LINE 仍會照常發送 |
+| 表單顯示「使用上次儲存的選項」 | 讀不到 Google Sheets 選項表（工地網路差或 Sheet 取消發布）；表單改用手機上次成功載入的選項，新加的選項要等網路恢復重開表單才會出現 |
 | 同一份報告出現兩次 | 正常情況下已由 submissionId 擋掉；若仍發生，檢查 Prepare Data 是否為 `n8n-snippets/Prepare Data.js` 的最新版 |
