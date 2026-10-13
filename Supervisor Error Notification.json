@@ -21,7 +21,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        224,
+        220,
         0
       ]
     },
@@ -41,8 +41,60 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        448,
+        440,
         0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EdfUyXtDiEAQPbKK",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "supervisor-form-error",
+        "options": {}
+      },
+      "name": "Webhook (Form Error)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        220
+      ],
+      "webhookId": "6f1d2c6e-5b8a-4f43-9a51-0c3f6e2d9b17"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Errors the supervisor form hit on a user's phone (see reportError() in\n// index.html). Forwarded to Jerry on LINE; the full report also stays in this\n// workflow's execution log.\nconst r = $input.first().json.body || $input.first().json;\nconst KIND = {\n  photo_upload_failed: '📷 照片上傳失敗',\n  photo_unreadable: '🖼️ 照片無法讀取',\n  photos_skipped: '⏭️ 使用者略過失敗的照片送出',\n  submit_failed: '📨 報告送出失敗',\n  options_load_failed: '📋 下拉選項載入失敗',\n  js_error: '🐞 表單程式錯誤',\n};\nconst cut = (v, n) => String(v ?? '').slice(0, n);\nconst when = r.at ? new Date(r.at).toLocaleString('zh-TW', { hour12: false }) : '-';\nconst ua = String(r.userAgent || '');\nconst device = (ua.match(/\\(([^)]+)\\)/) || [])[1] || ua;\n\nconst lines = [\n  `⚠️ 表單錯誤回報：${KIND[r.kind] || r.kind || '未知'}`,\n  '',\n  `👤 填寫者：${r.lineDisplayName || '-'}（${r.supervisor || '未選'}）`,\n  `🏗️ 廠商：${r.contractor || '-'}`,\n  `📁 工程：${r.projectName || '-'}`,\n  `📅 報告日期：${r.reportDate || '-'}`,\n  `🕒 發生時間：${when}`,\n  `📶 網路：${r.online === false ? '離線' : '連線中'}　語言：${r.language || '-'}　照片：${r.photoCount ?? '-'} 張`,\n  '',\n  `❌ ${cut(r.message, 300)}`,\n];\nconst extra = r.extra || {};\nif (Array.isArray(extra.photos)) {\n  lines.push('', '失敗的照片：');\n  extra.photos.slice(0, 10).forEach(p => lines.push(`• #${p.index} ${cut(p.name, 40)}（${p.type || '?'}, ${p.sizeKB}KB）\\n  ${cut(p.error, 150)}`));\n}\nif (Array.isArray(extra.files)) {\n  lines.push('', '無法讀取的照片：');\n  extra.files.slice(0, 10).forEach(f => lines.push(`• ${cut(f.name, 40)}（${f.type || '?'}, ${f.sizeKB}KB）\\n  ${cut(f.reason, 150)}`));\n}\nif (extra.source) lines.push('', `位置：${cut(extra.source, 200)}`);\nif (extra.stack) lines.push(`Stack：${cut(extra.stack, 400)}`);\nlines.push('', `📱 ${cut(device, 150)}`);\nif (r.submissionId) lines.push(`🆔 ${r.submissionId}`);\n\nconst payload = {\n  to: 'Ubf65144da2093a2cb9e01528d773413f',\n  messages: [{ type: 'text', text: cut(lines.join('\\n'), 4900) }],\n};\nreturn [{ json: { payload: JSON.stringify(payload) } }];"
+      },
+      "name": "Build Form Error Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.parse($json.payload) }}",
+        "options": {}
+      },
+      "name": "LINE → Jerry (Form Error)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        220
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -70,6 +122,28 @@
         [
           {
             "node": "LINE → Jerry (Error)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook (Form Error)": {
+      "main": [
+        [
+          {
+            "node": "Build Form Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Form Error Message": {
+      "main": [
+        [
+          {
+            "node": "LINE → Jerry (Form Error)",
             "type": "main",
             "index": 0
           }
