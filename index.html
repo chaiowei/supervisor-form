@@ -577,7 +577,7 @@
 // Bump on every change to this file. The LINE in-app browser keeps serving a
 // cached copy of the page for a long time after an update; checkForUpdate()
 // compares this against the live file and reloads when they differ.
-const APP_VERSION = '2026-10-13.4';
+const APP_VERSION = '2026-10-16.1';
 
 const CFG = {
   LIFF_ID:          '2010536222-MhPB41l8',
@@ -1434,7 +1434,7 @@ async function processPickedPhotos(files) {
   let heicDone = 0;
   for (const f of picked) {
     let file = f;
-    if (!(await canDecodeImage(f))) {
+    if (!(await canDecodeWithRetry(f))) {
       file = null;
       let reason = 'browser cannot decode image';
       if (await looksLikeHeic(f)) {
@@ -1507,6 +1507,19 @@ async function reencodeViaBitmap(file) {
   c.width = c.height = 0;
   if (!blob || !blob.size) throw new Error('re-encode produced empty image');
   return new File([blob], (file.name || 'photo').replace(/\.[^.]*$/, '') + '.jpg', { type: 'image/jpeg' });
+}
+
+// Before 2026-10-13 photos weren't checked when picked; a failed decode only
+// surfaced at upload, which retries 3 times over ~14s. The pick-time check made
+// a one-off failure (photo not ready yet right after the Android picker hands
+// it over, or the webview short of memory while drawing thumbnails) reject the
+// photo at once — so retry here too before treating it as unreadable.
+async function canDecodeWithRetry(file) {
+  for (const wait of [0, 800, 2000]) {
+    if (wait) await new Promise(r => setTimeout(r, wait));
+    if (await canDecodeImage(file)) return true;
+  }
+  return false;
 }
 
 function canDecodeImage(file) {
