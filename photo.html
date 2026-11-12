@@ -433,12 +433,13 @@
 //  CONFIGURATION — fill in before deploying
 // ═══════════════════════════════════════════════════════════
 // Photo-only form: same basic info + photo upload as index.html, but the
-// report goes to the "Supervisor Photo Report" n8n workflow (PDF + Drive +
-// LINE + Email, no Notion).
+// photos go to Google Drive (Supervisor Photo Upload) and the report goes to
+// the "Supervisor Photo Report" n8n workflow, which only sends LINE messages
+// (no PDF, no Email, no Notion).
 // Bump on every change to this file. The LINE in-app browser keeps serving a
 // cached copy of the page for a long time after an update; checkForUpdate()
 // compares this against the live file and reloads when they differ.
-const APP_VERSION = 'photo-2026-11-12.1';
+const APP_VERSION = 'photo-2026-11-12.2';
 
 const CFG = {
   LIFF_ID:          '2010536222-MhPB41l8',
@@ -737,8 +738,6 @@ const T = {
     'step-process-label': 'Processing Report',
     noPhotos: 'No photos',
     processMsgs: [
-      'Generating PDF report...',
-      'Uploading to cloud storage...',
       'Sending LINE notification...'
     ],
     confirmTitleLbl: 'Please Confirm Before Sending',
@@ -796,8 +795,6 @@ const T = {
     'step-process-label': 'กำลังประมวลผลรายงาน',
     noPhotos: 'ไม่มีรูปภาพ',
     processMsgs: [
-      'กำลังสร้างรายงาน PDF...',
-      'กำลังอัปโหลดไปยังคลาวด์...',
       'กำลังส่งการแจ้งเตือนทาง LINE...'
     ],
     confirmTitleLbl: 'กรุณายืนยันก่อนส่ง',
@@ -855,8 +852,6 @@ const T = {
     'step-process-label': '系統處理中',
     noPhotos: '無照片',
     processMsgs: [
-      '產生PDF報告中...',
-      '上傳雲端硬碟中...',
       '推送LINE通知中...'
     ],
     confirmTitleLbl: '送出前請確認資料',
@@ -1706,7 +1701,7 @@ async function proceedSubmit() {
       submissionId,
       language: lang,
       submittedAt: new Date().toISOString(),
-      // Phone-local fill-in time, shown as-is in the PDF / LINE / Email so the
+      // Phone-local fill-in time, shown as-is in the LINE message so the
       // server's own time zone never matters.
       filledAtLocal: localTimeString(filledAt || new Date()),
       filledDate: localDateStr(filledAt || new Date()),
@@ -1728,7 +1723,7 @@ async function proceedSubmit() {
     setStep('submit', 'done');
     setProgress(photoSpan + 5);
 
-    // Step 3: server-side processing (PDF, Drive upload, LINE push).
+    // Step 3: server-side processing (LINE push).
     // The webhook only replies once everything is done, so there's no real
     // % to read from the network — ease the bar toward (not reaching) a cap
     // every tick so it's always visibly moving instead of looking frozen.

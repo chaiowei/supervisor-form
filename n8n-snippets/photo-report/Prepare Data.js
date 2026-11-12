@@ -4,7 +4,7 @@ const raw = $input.first().json;
 const d = raw.body || raw;
 // Drop a report this workflow already received (same submissionId — e.g.
 // "Resubmit" after the first reply was lost on site). Returning no items stops
-// the workflow, so no duplicate PDF / LINE push / Email.
+// the workflow, so no duplicate LINE push.
 if (d.submissionId) {
   const store = $getWorkflowStaticData('global');
   const seen = store.seenSubmissions || {};
@@ -35,11 +35,8 @@ const dateObj = new Date(d.date + 'T00:00:00');
 const weekday = dateObj.toLocaleDateString(localeMap[d.language] || 'en-US', { weekday: 'long' });
 const weekdayZH = dateObj.toLocaleDateString('zh-TW', { weekday: 'long' });
 
-const safeStr = s => (s || '').slice(0, 30);
-// "_photos" keeps it apart from the daily report PDF of the same day
-const fileName = `${d.date}_${safeStr(d.contractor)}_${safeStr(d.projectName)}_photos.pdf`;
 const photoUrls = d.photoUrls || [];
 return [{ json: {
   ...d, submitTime: filledAtShort, filledAtLocal, filledAtShort, filledDate, lateEntry,
-  weekday, weekdayZH, fileName, photoUrls, photoCount: photoUrls.length
+  weekday, weekdayZH, photoUrls, photoCount: photoUrls.length
 } }];

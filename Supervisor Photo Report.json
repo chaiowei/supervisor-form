@@ -7,7 +7,7 @@
         "path": "supervisor-photo-report",
         "options": {}
       },
-      "id": "a3063649-fdf7-4e61-a882-ef3b1785ddce",
+      "id": "c6e842fc-16e7-4ff8-9bc1-c5799617a0dd",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -15,13 +15,13 @@
         0,
         300
       ],
-      "webhookId": "a16842db-cd02-47a0-b63d-cae131f3f76e"
+      "webhookId": "1ca72f26-71d3-4754-bb99-a10cf2008b42"
     },
     {
       "parameters": {
-        "jsCode": "// Supervisor Photo Report — basic info + site photos only (photo.html).\n// Same as the daily report's Prepare Data, minus weather / hazardous work.\nconst raw = $input.first().json;\nconst d = raw.body || raw;\n// Drop a report this workflow already received (same submissionId — e.g.\n// \"Resubmit\" after the first reply was lost on site). Returning no items stops\n// the workflow, so no duplicate PDF / LINE push / Email.\nif (d.submissionId) {\n  const store = $getWorkflowStaticData('global');\n  const seen = store.seenSubmissions || {};\n  const now = Date.now();\n  for (const id of Object.keys(seen)) if (now - seen[id] > 3 * 24 * 3600 * 1000) delete seen[id]; // keep 3 days\n  if (seen[d.submissionId]) return [];\n  seen[d.submissionId] = now;\n  store.seenSubmissions = seen;\n}\n\n// Fill-in time comes from the phone, so the n8n server's time zone never matters\nlet filledAtLocal = String(d.filledAtLocal || '').trim();\nlet filledDate = String(d.filledDate || '').trim();\nif (!filledAtLocal) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {\n    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false\n  }).formatToParts(new Date()).map(x => [x.type, x.value]));\n  filledAtLocal = `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}:${p.second} (Asia/Bangkok, UTC+7)`;\n  filledDate = `${p.year}-${p.month}-${p.day}`;\n}\nconst m = filledAtLocal.match(/^(\\d{4}\\/\\d{2}\\/\\d{2} \\d{2}:\\d{2})(?::\\d{2})?\\s*\\((?:.*?,\\s*)?([^)]*)\\)/);\nconst filledAtShort = m ? `${m[1]} (${m[2]})` : filledAtLocal;\nconst lateEntry = !!(d.date && filledDate && d.date < filledDate);\n\nconst localeMap = { en: 'en-US', th: 'th-TH', zh: 'zh-TW' };\nconst dateObj = new Date(d.date + 'T00:00:00');\nconst weekday = dateObj.toLocaleDateString(localeMap[d.language] || 'en-US', { weekday: 'long' });\nconst weekdayZH = dateObj.toLocaleDateString('zh-TW', { weekday: 'long' });\n\nconst safeStr = s => (s || '').slice(0, 30);\n// \"_photos\" keeps it apart from the daily report PDF of the same day\nconst fileName = `${d.date}_${safeStr(d.contractor)}_${safeStr(d.projectName)}_photos.pdf`;\nconst photoUrls = d.photoUrls || [];\nreturn [{ json: {\n  ...d, submitTime: filledAtShort, filledAtLocal, filledAtShort, filledDate, lateEntry,\n  weekday, weekdayZH, fileName, photoUrls, photoCount: photoUrls.length\n} }];\n"
+        "jsCode": "// Supervisor Photo Report — basic info + site photos only (photo.html).\n// Same as the daily report's Prepare Data, minus weather / hazardous work.\nconst raw = $input.first().json;\nconst d = raw.body || raw;\n// Drop a report this workflow already received (same submissionId — e.g.\n// \"Resubmit\" after the first reply was lost on site). Returning no items stops\n// the workflow, so no duplicate LINE push.\nif (d.submissionId) {\n  const store = $getWorkflowStaticData('global');\n  const seen = store.seenSubmissions || {};\n  const now = Date.now();\n  for (const id of Object.keys(seen)) if (now - seen[id] > 3 * 24 * 3600 * 1000) delete seen[id]; // keep 3 days\n  if (seen[d.submissionId]) return [];\n  seen[d.submissionId] = now;\n  store.seenSubmissions = seen;\n}\n\n// Fill-in time comes from the phone, so the n8n server's time zone never matters\nlet filledAtLocal = String(d.filledAtLocal || '').trim();\nlet filledDate = String(d.filledDate || '').trim();\nif (!filledAtLocal) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {\n    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false\n  }).formatToParts(new Date()).map(x => [x.type, x.value]));\n  filledAtLocal = `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}:${p.second} (Asia/Bangkok, UTC+7)`;\n  filledDate = `${p.year}-${p.month}-${p.day}`;\n}\nconst m = filledAtLocal.match(/^(\\d{4}\\/\\d{2}\\/\\d{2} \\d{2}:\\d{2})(?::\\d{2})?\\s*\\((?:.*?,\\s*)?([^)]*)\\)/);\nconst filledAtShort = m ? `${m[1]} (${m[2]})` : filledAtLocal;\nconst lateEntry = !!(d.date && filledDate && d.date < filledDate);\n\nconst localeMap = { en: 'en-US', th: 'th-TH', zh: 'zh-TW' };\nconst dateObj = new Date(d.date + 'T00:00:00');\nconst weekday = dateObj.toLocaleDateString(localeMap[d.language] || 'en-US', { weekday: 'long' });\nconst weekdayZH = dateObj.toLocaleDateString('zh-TW', { weekday: 'long' });\n\nconst photoUrls = d.photoUrls || [];\nreturn [{ json: {\n  ...d, submitTime: filledAtShort, filledAtLocal, filledAtShort, filledDate, lateEntry,\n  weekday, weekdayZH, photoUrls, photoCount: photoUrls.length\n} }];\n"
       },
-      "id": "1f3cbea0-e158-44bc-ad47-10b7dbe29946",
+      "id": "abd129c8-d6c5-4115-9cda-87a889739a9c",
       "name": "Prepare Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -32,287 +32,14 @@
     },
     {
       "parameters": {
-        "jsCode": "// Two PDFs like the daily report: the filler's language + Chinese. There is\n// no free text to translate here, so no Gemini step — only the labels differ.\nconst d = $('Prepare Data').first().json;\nconst lang = d.language || 'en';\nconst LBL = {\n  en: { title: 'Site Photo Report', projectName: 'Project Name', constructionArea: 'Construction Area', date: 'Date', weekday: 'Day', contractor: 'Contractor', supervisor: 'Engineer', time: 'Filled In', photos: 'Photos', late: 'Late entry', genLabel: 'Filled in' },\n  th: { title: 'รายงานรูปภาพหน้างาน', projectName: 'ชื่อโครงการ', constructionArea: 'พื้นที่ก่อสร้าง', date: 'วันที่', weekday: 'วัน', contractor: 'ผู้รับเหมา', supervisor: 'ผู้ควบคุมงาน', time: 'เวลาที่กรอก', photos: 'จำนวนรูป', late: 'บันทึกย้อนหลัง', genLabel: 'กรอกเมื่อ' },\n  zh: { title: '現場照片回報', projectName: '工程名稱', constructionArea: '施工廠區', date: '日期', weekday: '星期', contractor: '施工廠商', supervisor: '負責工程師', time: '填寫時間', photos: '照片張數', late: '補填', genLabel: '填寫時間' }\n};\nconst L = LBL[lang] || LBL.en;\nconst photoUrls = d.photoUrls || [];\nconst esc = s => String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\nlet photoHtml = '';\nfor (let i = 0; i < photoUrls.length; i += 4) {\n  const chunk = photoUrls.slice(i, i + 4);\n  const cells = chunk.map(url => `<td style='width:50%;padding:4px'><img src='${url}' style='width:100%;height:auto'></td>`);\n  while (cells.length < 4) cells.push(`<td style='width:50%;padding:4px'></td>`);\n  photoHtml += `<table style='width:100%;border-collapse:collapse;margin-top:8px;page-break-inside:avoid'><tr>${cells.slice(0,2).join('')}</tr><tr>${cells.slice(2,4).join('')}</tr></table>`;\n}\nfunction buildHtml(Lb, weekday) {\n  const genStamp = d.filledAtShort || '';\n  const timeCell = esc(d.filledAtShort) + (d.lateEntry ? ` <b style='color:#a05a00'>(${Lb.late})</b>` : '');\n  return `<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:Arial,'Noto Sans Thai',sans-serif;font-size:10pt;margin:0}.t{text-align:center;font-weight:bold;margin-bottom:4px}table.m{width:100%;border-collapse:collapse}table.m td{border:1px solid #333;padding:4px 6px;vertical-align:top}.gen-stamp{position:fixed;bottom:6mm;right:8mm;font-size:8pt;color:#aaaaaa}</style></head><body><div class='gen-stamp'>${Lb.genLabel}: ${genStamp}</div><div class='t' style='font-size:14pt'>ECO INFINIC</div><div class='t' style='font-size:12pt;margin-bottom:8px'>${Lb.title}</div><table class='m'><tr><td style='width:12%'><b>${Lb.projectName}</b></td><td style='width:38%'>${esc(d.projectName)}</td><td style='width:12%'><b>${Lb.constructionArea}</b></td><td style='width:38%'>${esc(d.constructionArea)}</td></tr><tr><td><b>${Lb.date}</b></td><td>${esc(d.date)}</td><td><b>${Lb.weekday}</b></td><td>${esc(weekday)}</td></tr><tr><td><b>${Lb.contractor}</b></td><td>${esc(d.contractor)}</td><td><b>${Lb.supervisor}</b></td><td>${esc(d.supervisor)}</td></tr><tr><td><b>${Lb.time}</b></td><td>${timeCell}</td><td><b>${Lb.photos}</b></td><td>${photoUrls.length}</td></tr></table>${photoHtml}</body></html>`;\n}\nconst html = buildHtml(L, d.weekday);\nconst htmlZH = buildHtml(LBL.zh, d.weekdayZH);\nconst variants = [\n  { lang: 'contractor', html, fileName: d.fileName },\n  { lang: 'zh', html: htmlZH, fileName: d.fileName.replace('.pdf', '_ZH.pdf') }\n];\nreturn [{ json: { ...d, variants } }];\n"
+        "jsCode": "// Supervisor Photo Report — no PDF, no Email, no Notion. The photos are\n// already in Google Drive (uploaded one by one through \"Supervisor Photo\n// Upload\"); this only sends LINE messages: a carousel with a summary bubble\n// and one bubble per photo (tap to open the photo in Drive).\nconst d = $('Prepare Data').first().json;\nconst lang = d.language || 'en';\nconst CL = {\n  en: { title: '✅ Site Photos Submitted', date: 'Date', project: 'Project', area: 'Area', photos: 'Photos', engineer: 'Engineer', filled: 'Filled in', late: '(late entry)', open: '🔍 Open photo', saved: 'Photos are saved to Google Drive.' },\n  th: { title: '✅ ส่งรูปภาพหน้างานสำเร็จ', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', photos: 'จำนวนรูป', engineer: 'ผู้ควบคุมงาน', filled: 'กรอกเมื่อ', late: '(บันทึกย้อนหลัง)', open: '🔍 เปิดรูป', saved: 'บันทึกรูปภาพไว้ใน Google Drive แล้ว' },\n  zh: { title: '📷 現場照片回報', date: '日期', project: '工程', area: '廠區', photos: '照片', engineer: '負責工程師', filled: '填寫時間', late: '（補填）', open: '🔍 開啟照片', saved: '照片已存到 Google 雲端硬碟' }\n};\nconst trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';\nconst photoUrls = (d.photoUrls || []).filter(u => /^https:\\/\\//.test(u));\nfunction kv(label, value) {\n  return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };\n}\nfunction summaryBubble(cl, weekday, headerColor, forJerry) {\n  const body = [\n    kv(cl.date, d.date + ' (' + weekday + ')' + (d.lateEntry ? ' ' + cl.late : '')),\n    kv(cl.project, trunc(d.projectName, 60)),\n    kv(cl.area, trunc(d.constructionArea, 60)),\n    ...(forJerry ? [kv(cl.engineer, trunc(d.supervisor, 40)), kv(cl.filled, d.filledAtShort || '-')] : []),\n    kv(cl.photos, String(photoUrls.length) + (d.skippedPhotoCount ? ` (+${d.skippedPhotoCount} ✕)` : '')),\n    { type: 'text', text: cl.saved, size: 'xxs', color: '#888888', wrap: true, margin: 'md' }\n  ];\n  return {\n    type: 'bubble', size: 'kilo',\n    header: { type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '14px', contents: [{ type: 'text', text: cl.title, color: '#ffffff', weight: 'bold', size: 'md', wrap: true }, { type: 'text', text: String(d.contractor || ''), color: '#ffffffcc', size: 'xs', margin: 'xs', wrap: true }] },\n    body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: body }\n  };\n}\nfunction photoBubble(cl, url, i) {\n  return {\n    type: 'bubble', size: 'kilo',\n    hero: { type: 'image', url, size: 'full', aspectRatio: '1:1', aspectMode: 'cover', action: { type: 'uri', uri: url } },\n    footer: { type: 'box', layout: 'horizontal', paddingAll: '8px', contents: [\n      { type: 'text', text: `${i + 1}/${photoUrls.length}`, size: 'xs', color: '#888888', gravity: 'center', flex: 1 },\n      { type: 'button', style: 'link', height: 'sm', flex: 3, action: { type: 'uri', label: cl.open, uri: url } }\n    ] }\n  };\n}\n// LINE carousel: max 12 bubbles (1 summary + up to 10 photos)\nfunction carousel(cl, weekday, headerColor, forJerry) {\n  return { type: 'flex', altText: `${cl.title} ${d.date || ''} ${trunc(d.projectName, 40)}`.slice(0, 400),\n    contents: { type: 'carousel', contents: [summaryBubble(cl, weekday, headerColor, forJerry), ...photoUrls.slice(0, 11).map((u, i) => photoBubble(cl, u, i))] } };\n}\nconst cl = CL[lang] || CL.en;\nconst contractorMsg = { to: d.lineUserId, messages: [carousel(cl, d.weekday, '#1a73e8', false)] };\n// Jerry always gets the Chinese version\nconst jerryMsg = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [carousel(CL.zh, d.weekdayZH, '#0d7a0d', true)] };\nreturn [{ json: { contractorPayload: JSON.stringify(contractorMsg), jerryPayload: JSON.stringify(jerryMsg) } }];\n"
       },
-      "id": "0ffb1384-159d-48d2-929b-d0a22fe96541",
-      "name": "Generate PDF HTML",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        448,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "fieldToSplitOut": "variants",
-        "options": {}
-      },
-      "id": "e78f67d7-6a2d-4845-a049-d928316ac33d",
-      "name": "Split Out",
-      "type": "n8n-nodes-base.splitOut",
-      "typeVersion": 1,
-      "position": [
-        672,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.pdf.co/v1/pdf/convert/from/html",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ html: $json.html, name: $json.fileName, async: true, margins: '15mm 15mm 15mm 15mm', paperSize: 'A4' }) }}",
-        "options": {
-          "batching": {
-            "batch": {
-              "batchSize": 2,
-              "batchInterval": 0
-            }
-          }
-        }
-      },
-      "id": "4adb425f-f984-4fee-9ecc-f1594b8c5837",
-      "name": "PDF.co API",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        896,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "ZSLJMMTC9uyA0d9i",
-          "name": "Header Auth account 4"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "amount": 3
-      },
-      "id": "8644739c-74f9-4e8b-803c-1d4708954a4d",
-      "name": "Wait Job",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        1120,
-        300
-      ],
-      "webhookId": "c2924b0f-610f-4b22-93c2-e8773c7c619f"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.pdf.co/v1/job/check",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ jobid: $json.jobId }) }}",
-        "options": {
-          "batching": {
-            "batch": {
-              "batchSize": 2,
-              "batchInterval": 0
-            }
-          }
-        }
-      },
-      "id": "83941b68-a90f-4765-a89e-8613ed9d22e4",
-      "name": "Check Job",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1344,
-        200
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "ZSLJMMTC9uyA0d9i",
-          "name": "Header Auth account 4"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst prevItems = $('Wait Job').all();\nreturn items.map((it, i) => {\n  const prevAttempts = (prevItems[i] && prevItems[i].json.attempts) || 0;\n  return { json: { ...it.json, attempts: prevAttempts + 1 } };\n});"
-      },
-      "id": "6598461b-82c5-44a1-b111-bb0d8a5145e3",
-      "name": "Track Attempt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1568,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst isTerminal = j => ['success','failed','aborted'].includes(j.status) || j.attempts >= 20;\nconst allDone = items.every(it => isTerminal(it.json));\nreturn items.map(it => ({ json: { ...it.json, allDone } }));"
-      },
-      "id": "dab19955-b503-4591-b3ff-df330a8c85f7",
-      "name": "Check All Done",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1792,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "poll-done",
-              "leftValue": "={{ $json.allDone }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "f264ad16-3750-48d4-bd94-65f3ee61d96f",
-      "name": "Job Poll Gate",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        2016,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "url": "={{ $json.url }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file"
-            }
-          }
-        }
-      },
-      "id": "e04c980e-38d1-406b-a3bf-3711627a82c0",
-      "name": "Download PDF",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2240,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "name": "={{ $('Split Out').all()[$itemIndex].json.fileName }}",
-        "driveId": {
-          "__rl": true,
-          "value": "My Drive",
-          "mode": "list",
-          "cachedResultName": "My Drive"
-        },
-        "folderId": {
-          "__rl": true,
-          "value": "1wcJmQkM_lSpZW5Nw-1TPZ51Dq-BP1D37",
-          "mode": "id"
-        },
-        "options": {}
-      },
-      "id": "f6abdc55-9675-4c60-a614-60ce6412dd4d",
-      "name": "Google Drive Upload",
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        2464,
-        300
-      ],
-      "credentials": {
-        "googleDriveOAuth2Api": {
-          "id": "tHegGlDXg7LOneTk",
-          "name": "Google Drive account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://www.googleapis.com/drive/v3/files/' + $json.id + '/permissions' }}",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleDriveOAuth2Api",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { type: 'anyone', role: 'reader' } }}",
-        "options": {}
-      },
-      "id": "133d05f8-254b-4521-ae66-12d69d7b6e49",
-      "name": "Set Drive Permission",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2688,
-        300
-      ],
-      "credentials": {
-        "googleDriveOAuth2Api": {
-          "id": "tHegGlDXg7LOneTk",
-          "name": "Google Drive account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Same LINE / Email as the daily report, minus Notion and the work-detail fields.\nconst d = $('Prepare Data').first().json;\nconst variantOrigins = $('Split Out').all();\nconst driveUploads = $('Google Drive Upload').all();\nconst idxOf = lang => variantOrigins.findIndex(it => it.json.lang === lang);\nconst driveUrl = 'https://drive.google.com/file/d/' + driveUploads[idxOf('contractor')].json.id + '/view';\nconst driveUrlZH = 'https://drive.google.com/file/d/' + driveUploads[idxOf('zh')].json.id + '/view';\nconst lang = d.language || 'en';\nconst CL = {\n  en: { title: '✅ Site Photos Submitted', date: 'Date', project: 'Project', area: 'Area', photos: 'Photos', download: '📥 Download PDF', share: '📤 Share', shareTitle: 'Site Photo Report', filled: 'Filled in', late: '(late entry)' },\n  th: { title: '✅ ส่งรูปภาพหน้างานสำเร็จ', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', photos: 'จำนวนรูป', download: '📥 ดาวน์โหลด PDF', share: '📤 แชร์', shareTitle: 'รายงานรูปภาพหน้างาน', filled: 'กรอกเมื่อ', late: '(บันทึกย้อนหลัง)' },\n  zh: { title: '✅ 現場照片已送出', date: '日期', project: '工程', area: '廠區', photos: '照片', download: '📥 下載 PDF', share: '📤 分享', shareTitle: '現場照片回報', filled: '填寫時間', late: '（補填）' }\n};\nconst cl = CL[lang] || CL.en;\nconst trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';\nfunction kv(label, value) {\n  return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };\n}\n// \"Share\" opens LINE's chat picker with a short summary + the PDF link (URI max 1000 chars)\nfunction shareUri(cl, pdfUrl) {\n  const head = `📷 ${cl.shareTitle} ${d.date || ''}`;\n  const tail = `📥 PDF: ${pdfUrl}`;\n  const full = [head, `${cl.project}: ${trunc(d.projectName, 40)}`, String(d.contractor || ''), tail].filter(Boolean).join('\\n');\n  const uri = 'https://line.me/R/share?text=' + encodeURIComponent(full);\n  return uri.length <= 1000 ? uri : 'https://line.me/R/share?text=' + encodeURIComponent(head + '\\n' + tail);\n}\nfunction buildFlex(cl, weekday, pdfUrl, headerColor, showFilled) {\n  const body = [\n    kv(cl.date, d.date + ' (' + weekday + ')' + (d.lateEntry ? ' ' + cl.late : '')),\n    kv(cl.project, trunc(d.projectName, 50)),\n    kv(cl.area, trunc(d.constructionArea, 50)),\n    kv(cl.photos, String(d.photoCount)),\n    ...(showFilled ? [kv(cl.filled, d.filledAtShort || '-')] : [])\n  ];\n  // First photo as the bubble image, so the message shows what was sent\n  const hero = d.photoUrls && d.photoUrls[0]\n    ? { type: 'image', url: d.photoUrls[0], size: 'full', aspectRatio: '4:3', aspectMode: 'cover', action: { type: 'uri', uri: pdfUrl } }\n    : undefined;\n  return {\n    type: 'bubble',\n    header: { type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '14px', contents: [{ type: 'text', text: cl.title, color: '#ffffff', weight: 'bold', size: 'md', wrap: true }, { type: 'text', text: String(d.contractor || ''), color: '#ffffffcc', size: 'xs', margin: 'xs' }] },\n    ...(hero ? { hero } : {}),\n    body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: body },\n    footer: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '10px', contents: [\n      { type: 'button', style: 'primary', color: headerColor, height: 'sm', action: { type: 'uri', label: cl.download, uri: pdfUrl } },\n      { type: 'button', style: 'secondary', height: 'sm', action: { type: 'uri', label: cl.share, uri: shareUri(cl, pdfUrl) } }\n    ] }\n  };\n}\nconst contractorFlex = { to: d.lineUserId, messages: [{ type: 'flex', altText: cl.title, contents: buildFlex(cl, d.weekday, driveUrl, '#1a73e8', false) }] };\nconst jerryFlex = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [{ type: 'flex', altText: CL.zh.title, contents: buildFlex(CL.zh, d.weekdayZH, driveUrlZH, '#0d7a0d', true) }] };\nfunction escHtml(s) { return String(s || '-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\nconst JERRY_EMAIL = 'jerry_hsieh@eco-infinic.com';\nconst recipientEmail = (d.supervisorEmail || '').trim() || JERRY_EMAIL;\nconst isJerry = recipientEmail.toLowerCase() === JERRY_EMAIL.toLowerCase();\nconst emailSubject = `現場照片回報 - ${d.projectName || ''} - ${d.date || ''}`;\nconst emailHtml = `<p><b>${escHtml(d.contractor)}</b> 提交了新的現場照片回報（負責工程師：${escHtml(d.supervisor)}）。</p><p>工程：${escHtml(d.projectName)}<br>廠區：${escHtml(d.constructionArea)}<br>日期：${escHtml(d.date)}（${escHtml(d.weekdayZH)}）${d.lateEntry ? '<b style=\"color:#a05a00\">（補填）</b>' : ''}<br>廠商：${escHtml(d.contractor)}<br>照片：${d.photoCount} 張<br>填寫時間：${escHtml(d.filledAtShort)}</p><p><a href=\"${driveUrlZH}\">📥 下載中文版 PDF</a></p>`;\nreturn [{ json: { contractorPayload: JSON.stringify(contractorFlex), jerryPayload: JSON.stringify(jerryFlex), isJerry, recipientEmail, emailSubject, emailHtml } }];\n"
-      },
-      "id": "3635d7ad-9866-4cde-ac37-9586ba5d2d61",
+      "id": "23c3d2b3-db38-4777-b45b-5d0e956b461b",
       "name": "Build Messages",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2912,
+        448,
         300
       ]
     },
@@ -336,53 +63,21 @@
         "jsonBody": "={{ JSON.parse($json.contractorPayload) }}",
         "options": {}
       },
-      "id": "48943488-141a-4701-b06b-c1a540352442",
+      "id": "3387d107-7a7c-4367-af67-99914a188642",
       "name": "LINE → Contractor",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3136,
-        150
+        672,
+        200
       ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "EdfUyXtDiEAQPbKK",
           "name": "Header Auth account 2"
         }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "is-jerry-cond",
-              "leftValue": "={{ $json.isJerry }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
       },
-      "id": "87461e9c-971f-4c93-bd0f-c8ae1dbe626f",
-      "name": "Is Jerry?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        3136,
-        300
-      ]
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -404,43 +99,23 @@
         "jsonBody": "={{ JSON.parse($json.jerryPayload) }}",
         "options": {}
       },
-      "id": "5e266c2a-0c5b-4179-8d8f-53cd7719e113",
+      "id": "5b2288bf-482d-40a9-ac7f-dd82cff12bd0",
       "name": "LINE → Jerry",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3360,
-        300
+        672,
+        400
       ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "EdfUyXtDiEAQPbKK",
           "name": "Header Auth account 2"
         }
-      }
-    },
-    {
-      "parameters": {
-        "sendTo": "={{ $json.recipientEmail }}",
-        "subject": "={{ $json.emailSubject }}",
-        "message": "={{ $json.emailHtml }}",
-        "options": {}
       },
-      "id": "72f721c2-bcba-4c58-9c88-8fb613c2fa05",
-      "name": "Email → Recipient",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [
-        3136,
-        450
-      ],
-      "webhookId": "ff161874-eb81-4fd9-b072-bb34b853992b",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "2Yg56p8UrbX5vv2p",
-          "name": "Gmail account"
-        }
-      }
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     }
   ],
   "pinData": {},
@@ -460,128 +135,7 @@
       "main": [
         [
           {
-            "node": "Generate PDF HTML",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Generate PDF HTML": {
-      "main": [
-        [
-          {
-            "node": "Split Out",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Split Out": {
-      "main": [
-        [
-          {
-            "node": "PDF.co API",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "PDF.co API": {
-      "main": [
-        [
-          {
-            "node": "Wait Job",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait Job": {
-      "main": [
-        [
-          {
-            "node": "Check Job",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Job": {
-      "main": [
-        [
-          {
-            "node": "Track Attempt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Track Attempt": {
-      "main": [
-        [
-          {
-            "node": "Check All Done",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check All Done": {
-      "main": [
-        [
-          {
-            "node": "Job Poll Gate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Download PDF": {
-      "main": [
-        [
-          {
-            "node": "Google Drive Upload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Drive Upload": {
-      "main": [
-        [
-          {
-            "node": "Set Drive Permission",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Set Drive Permission": {
-      "main": [
-        [
-          {
             "node": "Build Messages",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Is Jerry?": {
-      "main": [
-        [
-          {
-            "node": "LINE → Jerry",
             "type": "main",
             "index": 0
           }
@@ -597,30 +151,7 @@
             "index": 0
           },
           {
-            "node": "Is Jerry?",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Email → Recipient",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Job Poll Gate": {
-      "main": [
-        [
-          {
-            "node": "Download PDF",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Wait Job",
+            "node": "LINE → Jerry",
             "type": "main",
             "index": 0
           }
