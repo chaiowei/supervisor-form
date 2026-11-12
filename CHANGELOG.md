@@ -1,5 +1,19 @@
 # 更新紀錄
 
+## 2026-11-12
+
+### 新增：照片回報表單（只填基本資料＋上傳照片）
+- 新頁面 `photo.html`，LIFF 連結：`https://liff.line.me/2010536222-MhPB41l8/photo.html`。
+- 欄位只有：負責工程師、施工廠商、工程名稱、施工廠區、日期，以及現場照片（至少 1 張、最多 10 張）。
+- 其他功能與原表單相同：三語切換、字體大小、下拉選項快取、自動帶入上一份的工程師／廠商／工程、草稿、HEIC 轉檔與無法讀取照片的補救、上傳重試、略過失敗照片、確認頁、錯誤自動回報（標示「[照片表單]」）、自動更新版本。
+- 送到新的 n8n 流程「Supervisor Photo Report」（webhook `supervisor-photo-report`）：產生承包商語言版＋中文版 PDF 存到 Google Drive，LINE 通知承包商與 Jerry、Email 給負責工程師。**不寫入 Notion**，也不需翻譯。
+- 原本的 `index.html` 與主流程沒有任何變動。
+
+### 部署步驟
+1. n8n → Import from File → `Supervisor Photo Report.json` → 確認各節點憑證（PDF.co、Google Drive、Gmail、LINE，與主流程相同）→ Settings 確認 Error workflow 是 `Supervisor Error Notification` → **Active**。
+2. 合併後 GitHub Pages 自動上線 `photo.html`。
+3. 確認 LINE Developers 中 LIFF 的 Endpoint URL 是 `https://chaiowei.github.io/supervisor-form`（資料夾網址），再用上面的 LIFF 連結送一份測試。
+
 ## 2026-10-16
 
 ### 修正：部分 Android 手機的 JPG 照片被判定「無法讀取」

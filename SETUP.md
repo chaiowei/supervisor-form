@@ -1,6 +1,6 @@
 # LINE 監工日誌系統 — 設定指引
 
-> 最後更新：2026-10-13
+> 最後更新：2026-11-12
 
 ---
 
@@ -28,6 +28,28 @@ n8n「Supervisor Daily Report v2」（webhook: supervisor-report）
     └─ 任何節點失敗 → 「Supervisor Error Notification」用 LINE 通知 Jerry
 ```
 
+### 照片回報表單（photo.html，只填基本資料＋上傳照片，不寫 Notion）
+
+```
+LIFF 照片表單 photo.html（https://liff.line.me/2010536222-MhPB41l8/photo.html）
+    │  基本資料（工程師／廠商／工程／廠區／日期）＋ 照片 1–10 張（必填）
+    │  照片一樣走「Supervisor Photo Upload」→ 同一個 Google Drive 工程資料夾
+    ▼
+n8n「Supervisor Photo Report」（webhook: supervisor-photo-report）
+    ├─ Prepare Data — 防重複（submissionId）、填寫時間、補填判斷
+    ├─ Generate PDF HTML → PDF.co → Google Drive（承包商語言版 + 中文版，檔名結尾 `_photos.pdf`）
+    └─ Build Messages
+          ├─ LINE → Contractor（下載 PDF／分享，訊息上方顯示第一張照片）
+          ├─ LINE → Jerry（中文版）
+          └─ Email → 負責工程師（中文 PDF）
+```
+
+- 沒有文字欄位要翻譯，所以不經過 Gemini；也**不寫入 Notion**。
+- 下拉選項、記住上次選擇、字體大小、語言、草稿、照片 HEIC 轉檔／重試、錯誤回報、自動更新版本，都和 `index.html` 一樣。
+- 錯誤回報共用 `supervisor-form-error`，訊息開頭會標「[照片表單]」。
+- 版本號在 `photo.html` 的 `APP_VERSION`（`photo-` 開頭），修改後要更新。
+- LIFF 連結是在原本的 LIFF 網址後面加 `/photo.html`，不需要另外申請 LIFF。前提是 LINE Developers 裡這個 LIFF 的 Endpoint URL 是 `https://chaiowei.github.io/supervisor-form`（或結尾加 `/`）；如果是 `.../index.html`，請改成資料夾網址，或另外建一個 Endpoint 指向 `.../photo.html` 的 LIFF，再把新 ID 填到 `photo.html` 的 `CFG.LIFF_ID`。
+
 ---
 
 ## repo 檔案
@@ -35,9 +57,12 @@ n8n「Supervisor Daily Report v2」（webhook: supervisor-report）
 | 檔案 | 用途 |
 |------|------|
 | `index.html` | LIFF 表單（GitHub Pages 直接發布 master 分支）。每次修改都要更新 `APP_VERSION`，LINE 才會自動載入新版；頁面最下方會顯示版本號 |
+| `photo.html` | 照片回報表單（只有基本資料＋照片，送到 n8n「Supervisor Photo Report」，不寫 Notion）。修改時也要更新它自己的 `APP_VERSION` |
 | `privacy.html` | 隱私權政策頁（Google OAuth 正式版需要） |
 | `Supervisor Daily Report v2.json` | n8n 主流程匯出檔 |
 | `Supervisor Photo Upload.json` | n8n 照片上傳流程（照片 → Google Drive） |
+| `Supervisor Photo Report.json` | n8n 照片回報流程（photo.html 用）：PDF → Drive → LINE／Email，無 Notion |
+| `n8n-snippets/photo-report/*.js` | 照片回報流程各 Code 節點的程式碼（Prepare Data、Generate PDF HTML、Build Messages） |
 | `Supervisor Error Notification.json` | n8n 錯誤通知流程：① n8n 流程出錯（Error Trigger）② 填寫者手機上發生的錯誤（webhook `supervisor-form-error`），都用 LINE 通知 Jerry |
 | `Migrate imgBB Photos to Drive.json` | 一次性流程：把舊 imgBB 照片搬到 Drive（已用不到，保留備查） |
 | `n8n-snippets/*.js` | 主流程各 Code 節點的最新程式碼（Prepare Data、Generate PDF HTML、Build Notion Payload、Build Messages、Build Photo Blocks），修改 n8n 時直接整段貼上 |
@@ -73,6 +98,7 @@ n8n Cloud：https://jerry-hsieh.app.n8n.cloud
 |------|------|-----------|
 | Supervisor Daily Report v2（ID `OCwh63R7TRuPgdDj`） | Active | Google Drive account、Notion work、Gmail account、LINE（Header Auth `Authorization: Bearer <channel access token>`）、PDF.co、Gemini |
 | Supervisor Photo Upload（ID `Ld4gtljkJtYW3wkk`） | Active | Google Drive account |
+| Supervisor Photo Report（新，匯入 `Supervisor Photo Report.json`） | 匯入後設為 Active | Google Drive account、Gmail account、LINE、PDF.co（與主流程相同） |
 | Supervisor Error Notification（ID `LhO1L9YtYPahglea`） | Active，並在主流程 Settings → Error workflow 指定；同時接收表單錯誤回報（webhook `supervisor-form-error`） | LINE |
 
 **Google Drive／Gmail 授權不會每 7 天過期的前提：** Google Cloud（My First Project）→ Google Auth Platform → 目標對象 → 發布狀態必須是「**實際運作中**」。若改回「測試」，授權會每 7 天失效，照片會全部上傳失敗、報告送不出去。
