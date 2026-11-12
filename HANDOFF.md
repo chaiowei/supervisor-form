@@ -95,6 +95,7 @@ Webhook (POST supervisor-photo-report)
 |------|------|
 | `index.html` | 完整版表單 |
 | `photo.html` | 照片版表單 |
+| `richmenu-2500x843.png` | LINE 圖文選單圖片（左：每日日誌 `index.html`；右：照片回報 `photo.html`） |
 | `privacy.html` | 隱私權政策 |
 | `Supervisor Daily Report v2.json` | 完整版 n8n 主流程 |
 | `Supervisor Photo Report.json` | 照片版 n8n 流程 |
