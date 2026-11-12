@@ -49,7 +49,7 @@
 ## 4. photo.html 的流程
 
 1. 載入時讀取選項 CSV（15 秒逾時，失敗時改用手機快取）、自動帶入上次選的工程師、廠商、工程、檢查草稿、檢查新版本，並用 `liff.init` 取得 `lineUserId`。
-2. 選照片時逐張檢查能不能讀取（最多重試 3 次）。HEIC 會轉成 JPEG，讀不到的會嘗試補救，最多 10 張。
+2. 選照片時逐張檢查能不能讀取（最多重試 3 次）。HEIC 會轉成 JPEG，讀不到的會嘗試補救，最多 20 張。
 3. 按送出 → 驗證必填欄位（至少 1 張照片）→ 顯示確認頁 → 確認送出。
 4. 照片壓縮到 1280px、品質 0.7 → 每次 3 張平行上傳（第一張單獨先上傳，避免 Drive 重複建立資料夾）。每張重試 3 次，已上傳成功的照片會記住，重送時不會再傳。
 5. 把下面的 JSON POST 到 `supervisor-photo-report`（60 秒逾時）：
@@ -76,7 +76,7 @@ Webhook (POST supervisor-photo-report)
 ```
 - LINE 推播使用 `https://api.line.me/v2/bot/message/push`，憑證是 Header Auth「Header Auth account 2」（`Authorization: Bearer <channel access token>`）
 - Workflow 設定的 Error workflow 是 `Supervisor Error Notification`（ID `LhO1L9YtYPahglea`）
-- LINE 輪播最多 12 格，所以程式最多放 11 張照片（表單本身只允許 10 張）
+- 表單最多 20 張照片。LINE 輪播一則最多 12 格，所以拆成兩則：第 1 則是摘要＋照片 1–11，第 2 則是照片 12–20
 
 ## 6. 測試方式
 

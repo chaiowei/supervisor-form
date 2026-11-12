@@ -329,7 +329,7 @@
           <div class="photo-zone" id="photoZone">
             <input type="file" id="photoInput" accept="image/*" multiple onchange="addPhotos(this)">
             <div class="photo-zone-icon">📷</div>
-            <div class="photo-zone-label" id="l-photoLabel">Tap to upload photos (max 10) / แตะเพื่ออัปโหลดรูป (สูงสุด 10 รูป)</div>
+            <div class="photo-zone-label" id="l-photoLabel">Tap to add photos (1–20) / แตะเพื่อเพิ่มรูปภาพ (1–20 รูป)</div>
           </div>
           <div class="photo-status" id="photoStatus"></div>
           <div class="photo-grid" id="photoGrid"></div>
@@ -439,7 +439,7 @@
 // Bump on every change to this file. The LINE in-app browser keeps serving a
 // cached copy of the page for a long time after an update; checkForUpdate()
 // compares this against the live file and reloads when they differ.
-const APP_VERSION = 'photo-2026-11-12.2';
+const APP_VERSION = 'photo-2026-11-12.3';
 
 const CFG = {
   LIFF_ID:          '2010536222-MhPB41l8',
@@ -449,7 +449,7 @@ const CFG = {
   PHOTO_UPLOAD_URL: 'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-photo',
   // Errors users hit are sent here ("Supervisor Form Error Report" n8n workflow → LINE to Jerry)
   ERROR_REPORT_URL: 'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-form-error',
-  MAX_PHOTOS: 10,
+  MAX_PHOTOS: 20,
   PHOTO_MAX_PX: 1280,
   PHOTO_QUALITY: 0.70,
   // Loaded only when a HEIC/HEIF photo is picked that the browser can't show
@@ -714,7 +714,7 @@ const T = {
     'l-constructionArea': 'Construction Area',
     'l-contractor': 'Contractor Company',
     'l-date': 'Date',
-    'l-photoLabel': 'Tap to add photos (1–10)',
+    'l-photoLabel': 'Tap to add photos (1–20)',
     photoCountLbl: 'Photos',
     'opt-sel': '-- Select --',
     dateLate: (d) => `⚠️ Late entry for ${d}`,
@@ -771,7 +771,7 @@ const T = {
     'l-constructionArea': 'พื้นที่ก่อสร้าง',
     'l-contractor': 'บริษัทผู้รับเหมา',
     'l-date': 'วันที่',
-    'l-photoLabel': 'แตะเพื่อเพิ่มรูปภาพ (1–10 รูป)',
+    'l-photoLabel': 'แตะเพื่อเพิ่มรูปภาพ (1–20 รูป)',
     photoCountLbl: 'จำนวนรูป',
     'opt-sel': '-- เลือก --',
     dateLate: (d) => `⚠️ บันทึกย้อนหลังของวันที่ ${d}`,
@@ -828,7 +828,7 @@ const T = {
     'l-constructionArea': '施工廠區',
     'l-contractor': '施工廠商',
     'l-date': '日期',
-    'l-photoLabel': '點擊加入現場照片（1–10 張）',
+    'l-photoLabel': '點擊加入現場照片（1–20 張）',
     photoCountLbl: '照片張數',
     'opt-sel': '-- 請選擇 --',
     dateLate: (d) => `⚠️ 補填 ${d} 的日誌`,
