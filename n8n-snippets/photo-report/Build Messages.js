@@ -39,13 +39,19 @@ function photoBubble(cl, url, i) {
     ] }
   };
 }
-// LINE carousel: max 12 bubbles (1 summary + up to 10 photos)
-function carousel(cl, weekday, headerColor, forJerry) {
-  return { type: 'flex', altText: `${cl.title} ${d.date || ''} ${trunc(d.projectName, 40)}`.slice(0, 400),
-    contents: { type: 'carousel', contents: [summaryBubble(cl, weekday, headerColor, forJerry), ...photoUrls.slice(0, 11).map((u, i) => photoBubble(cl, u, i))] } };
+// A LINE carousel holds at most 12 bubbles, and one push at most 5 messages.
+// Up to 20 photos: message 1 = summary + photos 1–11, message 2 = photos 12–20.
+function carousels(cl, weekday, headerColor, forJerry) {
+  const bubbles = [summaryBubble(cl, weekday, headerColor, forJerry), ...photoUrls.map((u, i) => photoBubble(cl, u, i))];
+  const alt = `${cl.title} ${d.date || ''} ${trunc(d.projectName, 40)}`.slice(0, 380);
+  const msgs = [];
+  for (let i = 0; i < bubbles.length && msgs.length < 5; i += 12) {
+    msgs.push({ type: 'flex', altText: msgs.length ? `${alt} (${msgs.length + 1})` : alt, contents: { type: 'carousel', contents: bubbles.slice(i, i + 12) } });
+  }
+  return msgs;
 }
 const cl = CL[lang] || CL.en;
-const contractorMsg = { to: d.lineUserId, messages: [carousel(cl, d.weekday, '#1a73e8', false)] };
+const contractorMsg = { to: d.lineUserId, messages: carousels(cl, d.weekday, '#1a73e8', false) };
 // Jerry always gets the Chinese version
-const jerryMsg = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [carousel(CL.zh, d.weekdayZH, '#0d7a0d', true)] };
+const jerryMsg = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: carousels(CL.zh, d.weekdayZH, '#0d7a0d', true) };
 return [{ json: { contractorPayload: JSON.stringify(contractorMsg), jerryPayload: JSON.stringify(jerryMsg) } }];

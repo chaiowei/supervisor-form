@@ -32,13 +32,13 @@ n8n「Supervisor Daily Report v2」（webhook: supervisor-report）
 
 ```
 LIFF 照片表單 photo.html（https://liff.line.me/2010536222-MhPB41l8/photo.html）
-    │  基本資料（工程師／廠商／工程／廠區／日期）＋ 照片 1–10 張（必填）
+    │  基本資料（工程師／廠商／工程／廠區／日期）＋ 照片 1–20 張（必填）
     │  照片走「Supervisor Photo Upload」→ 存到 Google Drive 同一個工程資料夾
     ▼
 n8n「Supervisor Photo Report」（webhook: supervisor-photo-report）
     ├─ Prepare Data — 防重複（submissionId）、填寫時間、補填判斷
     └─ Build Messages
-          ├─ LINE → Contractor（填寫者語言：摘要 + 每張照片一格的輪播）
+          ├─ LINE → Contractor（填寫者語言：摘要 + 每張照片一格的輪播，超過 11 張分成兩則）
           └─ LINE → Jerry（中文版，一律推播）
 ```
 

@@ -1,5 +1,13 @@
 # 更新紀錄
 
+## 2026-11-12（續）
+
+### 照片回報表單：照片上限改為 20 張
+- `photo.html` 最多可選 20 張（原本 10 張），版本號 `photo-2026-11-12.3`。
+- LINE 輪播一則最多 12 格，超過 11 張時會分成兩則：第 1 則是摘要＋照片 1–11，第 2 則是照片 12–20。
+- **n8n 要更新**：打開 Supervisor Photo Report → 雙擊 `Build Messages` → 用 `n8n-snippets/photo-report/Build Messages.js` 整段取代 → Save。
+- `index.html` 不變，仍是 10 張。
+
 ## 2026-11-12
 
 ### 新增：照片回報表單（只填基本資料＋上傳照片）
