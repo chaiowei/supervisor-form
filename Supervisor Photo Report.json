@@ -1,0 +1,171 @@
+{
+  "name": "Supervisor Photo Report",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "supervisor-photo-report",
+        "options": {}
+      },
+      "id": "c6e842fc-16e7-4ff8-9bc1-c5799617a0dd",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "1ca72f26-71d3-4754-bb99-a10cf2008b42"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Supervisor Photo Report — basic info + site photos only (photo.html).\n// Same as the daily report's Prepare Data, minus weather / hazardous work.\nconst raw = $input.first().json;\nconst d = raw.body || raw;\n// Drop a report this workflow already received (same submissionId — e.g.\n// \"Resubmit\" after the first reply was lost on site). Returning no items stops\n// the workflow, so no duplicate LINE push.\nif (d.submissionId) {\n  const store = $getWorkflowStaticData('global');\n  const seen = store.seenSubmissions || {};\n  const now = Date.now();\n  for (const id of Object.keys(seen)) if (now - seen[id] > 3 * 24 * 3600 * 1000) delete seen[id]; // keep 3 days\n  if (seen[d.submissionId]) return [];\n  seen[d.submissionId] = now;\n  store.seenSubmissions = seen;\n}\n\n// Fill-in time comes from the phone, so the n8n server's time zone never matters\nlet filledAtLocal = String(d.filledAtLocal || '').trim();\nlet filledDate = String(d.filledDate || '').trim();\nif (!filledAtLocal) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {\n    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false\n  }).formatToParts(new Date()).map(x => [x.type, x.value]));\n  filledAtLocal = `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}:${p.second} (Asia/Bangkok, UTC+7)`;\n  filledDate = `${p.year}-${p.month}-${p.day}`;\n}\nconst m = filledAtLocal.match(/^(\\d{4}\\/\\d{2}\\/\\d{2} \\d{2}:\\d{2})(?::\\d{2})?\\s*\\((?:.*?,\\s*)?([^)]*)\\)/);\nconst filledAtShort = m ? `${m[1]} (${m[2]})` : filledAtLocal;\nconst lateEntry = !!(d.date && filledDate && d.date < filledDate);\n\nconst localeMap = { en: 'en-US', th: 'th-TH', zh: 'zh-TW' };\nconst dateObj = new Date(d.date + 'T00:00:00');\nconst weekday = dateObj.toLocaleDateString(localeMap[d.language] || 'en-US', { weekday: 'long' });\nconst weekdayZH = dateObj.toLocaleDateString('zh-TW', { weekday: 'long' });\n\nconst photoUrls = d.photoUrls || [];\nreturn [{ json: {\n  ...d, submitTime: filledAtShort, filledAtLocal, filledAtShort, filledDate, lateEntry,\n  weekday, weekdayZH, photoUrls, photoCount: photoUrls.length\n} }];\n"
+      },
+      "id": "abd129c8-d6c5-4115-9cda-87a889739a9c",
+      "name": "Prepare Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Supervisor Photo Report — no PDF, no Email, no Notion. The photos are\n// already in Google Drive (uploaded one by one through \"Supervisor Photo\n// Upload\"); this only sends LINE messages: a carousel with a summary bubble\n// and one bubble per photo (tap to open the photo in Drive).\nconst d = $('Prepare Data').first().json;\nconst lang = d.language || 'en';\nconst CL = {\n  en: { title: '✅ Site Photos Submitted', date: 'Date', project: 'Project', area: 'Area', photos: 'Photos', engineer: 'Engineer', filled: 'Filled in', late: '(late entry)', open: '🔍 Open photo', saved: 'Photos are saved to Google Drive.' },\n  th: { title: '✅ ส่งรูปภาพหน้างานสำเร็จ', date: 'วันที่', project: 'โครงการ', area: 'พื้นที่', photos: 'จำนวนรูป', engineer: 'ผู้ควบคุมงาน', filled: 'กรอกเมื่อ', late: '(บันทึกย้อนหลัง)', open: '🔍 เปิดรูป', saved: 'บันทึกรูปภาพไว้ใน Google Drive แล้ว' },\n  zh: { title: '📷 現場照片回報', date: '日期', project: '工程', area: '廠區', photos: '照片', engineer: '負責工程師', filled: '填寫時間', late: '（補填）', open: '🔍 開啟照片', saved: '照片已存到 Google 雲端硬碟' }\n};\nconst trunc = (s, n) => String(s || '').trim().substring(0, n) || '-';\nconst photoUrls = (d.photoUrls || []).filter(u => /^https:\\/\\//.test(u));\nfunction kv(label, value) {\n  return { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'sm', contents: [{ type: 'text', text: label, size: 'xs', color: '#888888', flex: 3, wrap: false }, { type: 'text', text: value, size: 'xs', color: '#333333', flex: 5, wrap: true }] };\n}\nfunction summaryBubble(cl, weekday, headerColor, forJerry) {\n  const body = [\n    kv(cl.date, d.date + ' (' + weekday + ')' + (d.lateEntry ? ' ' + cl.late : '')),\n    kv(cl.project, trunc(d.projectName, 60)),\n    kv(cl.area, trunc(d.constructionArea, 60)),\n    ...(forJerry ? [kv(cl.engineer, trunc(d.supervisor, 40)), kv(cl.filled, d.filledAtShort || '-')] : []),\n    kv(cl.photos, String(photoUrls.length) + (d.skippedPhotoCount ? ` (+${d.skippedPhotoCount} ✕)` : '')),\n    { type: 'text', text: cl.saved, size: 'xxs', color: '#888888', wrap: true, margin: 'md' }\n  ];\n  return {\n    type: 'bubble', size: 'kilo',\n    header: { type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: '14px', contents: [{ type: 'text', text: cl.title, color: '#ffffff', weight: 'bold', size: 'md', wrap: true }, { type: 'text', text: String(d.contractor || ''), color: '#ffffffcc', size: 'xs', margin: 'xs', wrap: true }] },\n    body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: body }\n  };\n}\nfunction photoBubble(cl, url, i) {\n  return {\n    type: 'bubble', size: 'kilo',\n    hero: { type: 'image', url, size: 'full', aspectRatio: '1:1', aspectMode: 'cover', action: { type: 'uri', uri: url } },\n    footer: { type: 'box', layout: 'horizontal', paddingAll: '8px', contents: [\n      { type: 'text', text: `${i + 1}/${photoUrls.length}`, size: 'xs', color: '#888888', gravity: 'center', flex: 1 },\n      { type: 'button', style: 'link', height: 'sm', flex: 3, action: { type: 'uri', label: cl.open, uri: url } }\n    ] }\n  };\n}\n// LINE carousel: max 12 bubbles (1 summary + up to 10 photos)\nfunction carousel(cl, weekday, headerColor, forJerry) {\n  return { type: 'flex', altText: `${cl.title} ${d.date || ''} ${trunc(d.projectName, 40)}`.slice(0, 400),\n    contents: { type: 'carousel', contents: [summaryBubble(cl, weekday, headerColor, forJerry), ...photoUrls.slice(0, 11).map((u, i) => photoBubble(cl, u, i))] } };\n}\nconst cl = CL[lang] || CL.en;\nconst contractorMsg = { to: d.lineUserId, messages: [carousel(cl, d.weekday, '#1a73e8', false)] };\n// Jerry always gets the Chinese version\nconst jerryMsg = { to: 'Ubf65144da2093a2cb9e01528d773413f', messages: [carousel(CL.zh, d.weekdayZH, '#0d7a0d', true)] };\nreturn [{ json: { contractorPayload: JSON.stringify(contractorMsg), jerryPayload: JSON.stringify(jerryMsg) } }];\n"
+      },
+      "id": "23c3d2b3-db38-4777-b45b-5d0e956b461b",
+      "name": "Build Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.parse($json.contractorPayload) }}",
+        "options": {}
+      },
+      "id": "3387d107-7a7c-4367-af67-99914a188642",
+      "name": "LINE → Contractor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EdfUyXtDiEAQPbKK",
+          "name": "Header Auth account 2"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.parse($json.jerryPayload) }}",
+        "options": {}
+      },
+      "id": "5b2288bf-482d-40a9-ac7f-dd82cff12bd0",
+      "name": "LINE → Jerry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EdfUyXtDiEAQPbKK",
+          "name": "Header Auth account 2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data": {
+      "main": [
+        [
+          {
+            "node": "Build Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Messages": {
+      "main": [
+        [
+          {
+            "node": "LINE → Contractor",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "LINE → Jerry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "LhO1L9YtYPahglea",
+    "timezone": "Asia/Bangkok"
+  },
+  "tags": []
+}

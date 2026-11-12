@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache">
+  <title>Site Photo Report / รายงานรูปภาพหน้างาน / 現場照片回報</title>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    :root {
+      --green: #00B900;
+      --green-dark: #009900;
+      --bg: #f0f4f0;
+      --card: #ffffff;
+      --text: #1a1a1a;
+      --muted: #666;
+      --border: #dde5dd;
+      --red: #e53e3e;
+      --radius: 14px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --fs: 1; /* text scale, set by the A−/A+ buttons */
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans Thai', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 32px;
+    }
+    /* Header */
+    .hdr {
+      background: var(--green);
+      color: #fff;
+      padding: 14px 16px;
+      position: sticky; top: 0; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 2px 8px rgba(0,185,0,0.3);
+    }
+    .hdr h1 { font-size: 15px; font-weight: 700; line-height: 1.4; }
+    .hdr h1 small { display: block; font-size: 12px; font-weight: 400; opacity: 0.85; margin-top: 2px; }
+    .lang-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.5);
+      color: #fff; padding: 6px 14px;
+      border-radius: 20px; font-size: 13px; font-weight: 700;
+      cursor: pointer; white-space: nowrap; min-width: 56px; text-align: center;
+    }
+    .hdr-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: 8px; }
+    .fs-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.5);
+      color: #fff; width: 34px; height: 32px; padding: 0;
+      border-radius: 16px; font-weight: 700; line-height: 1;
+      cursor: pointer; font-family: inherit;
+    }
+    .fs-btn.small { font-size: 13px; }
+    .fs-btn.big { font-size: 18px; }
+    .fs-btn:disabled { opacity: 0.4; cursor: default; }
+    /* Container */
+    .wrap { max-width: 540px; margin: 0 auto; padding: 14px 12px; }
+    /* Card */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+    }
+    .sec-title {
+      font-size: calc(13px * var(--fs)); font-weight: 700;
+      color: var(--green); text-transform: uppercase; letter-spacing: 0.6px;
+      border-bottom: 2px solid #e6f4e6;
+      padding-bottom: 8px; margin-bottom: 16px;
+    }
+    /* Fields */
+    .field { margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+    label {
+      display: block; font-size: calc(15px * var(--fs)); font-weight: 600;
+      color: var(--text); margin-bottom: 8px;
+    }
+    label .req { color: var(--red); margin-left: 1px; }
+    label .hint { display: block; font-weight: 400; color: var(--muted); font-size: calc(13px * var(--fs)); margin-top: 3px; }
+    input[type="text"], input[type="number"], input[type="date"], select, textarea {
+      width: 100%; padding: 13px 14px;
+      border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: calc(16px * var(--fs)); font-family: inherit; color: var(--text);
+      background: #fafdf9;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      -webkit-appearance: none; appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(0,185,0,0.12); background: #fff;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 13px center;
+      padding-right: 34px;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    .date-late { display: none; margin-top: 6px; font-size: calc(13px * var(--fs)); font-weight: 600; color: #a05a00; }
+    /* Error state */
+    .err-msg { display: none; color: var(--red); font-size: calc(11px * var(--fs)); margin-top: 4px; }
+    .field.err input, .field.err select, .field.err textarea, .field.err .multiselect-btn { border-color: var(--red); }
+    .field.err .err-msg { display: block; }
+    .field.err .photo-zone { border-color: var(--red); }
+    /* Multi-select popup */
+    .multiselect-btn {
+      width: 100%; text-align: left; padding: 13px 14px;
+      border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: calc(16px * var(--fs)); font-family: inherit; color: var(--text);
+      background: #fafdf9; cursor: pointer;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .multiselect-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .ms-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 300; display: flex; align-items: flex-end; justify-content: center;
+    }
+    .ms-sheet {
+      background: #fff; width: 100%; max-width: 540px;
+      border-radius: 16px 16px 0 0; padding: 18px 16px 16px;
+      max-height: 72vh; display: flex; flex-direction: column;
+    }
+    .ms-sheet-title { font-size: calc(15px * var(--fs)); font-weight: 700; margin-bottom: 10px; }
+    .ms-list { overflow-y: auto; flex: 1; margin-bottom: 14px; }
+    .ms-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 4px; border-bottom: 1px solid var(--border); font-size: calc(15px * var(--fs));
+    }
+    .ms-item input { width: calc(18px * var(--fs)); height: calc(18px * var(--fs)); flex-shrink: 0; }
+    .ms-empty { color: var(--muted); font-size: calc(13px * var(--fs)); padding: 12px 4px; }
+    .ms-actions { display: flex; gap: 8px; }
+    .ms-actions button {
+      flex: 1; padding: 12px; border-radius: 10px; border: none;
+      font-weight: 700; font-size: calc(15px * var(--fs)); cursor: pointer;
+    }
+    .ms-actions .btn-primary { background: var(--green); color: #fff; }
+    .ms-actions .btn-secondary { background: #eee; color: #333; }
+    /* Photo upload */
+    .photo-zone {
+      border: 2px dashed var(--border); border-radius: 10px;
+      padding: 22px 16px; text-align: center; cursor: pointer;
+      position: relative; transition: border-color 0.2s;
+    }
+    .photo-zone:hover { border-color: var(--green); }
+    .photo-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .photo-zone-icon { font-size: calc(30px * var(--fs)); margin-bottom: 6px; }
+    .photo-zone-label { font-size: calc(13px * var(--fs)); color: var(--muted); }
+    .photo-status { display: none; margin-top: 8px; font-size: calc(13px * var(--fs)); color: var(--muted); }
+    .photo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 10px; }
+    .thumb { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #eee; }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .thumb .del {
+      position: absolute; top: 4px; right: 4px;
+      background: rgba(0,0,0,0.65); color: #fff;
+      border: none; border-radius: 50%; width: 22px; height: 22px;
+      font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    /* Submit */
+    .submit-btn {
+      width: 100%; padding: 15px;
+      background: var(--green); color: #fff;
+      border: none; border-radius: var(--radius);
+      font-size: calc(16px * var(--fs)); font-weight: 700; cursor: pointer;
+      margin-top: 6px; transition: background 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .submit-btn:hover { background: var(--green-dark); }
+    .submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+    .spinner {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .confirm-notice {
+      background: #fff8e1; border: 1px solid #f0c36d; color: #7a5200;
+      border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+      font-size: calc(14px * var(--fs)); font-weight: 600; line-height: 1.5;
+    }
+    .app-version { text-align: center; font-size: 11px; color: #aaa; margin-top: 16px; }
+    /* Result screens */
+    .screen { display: none; text-align: center; padding: 48px 24px; }
+    .screen-icon { font-size: calc(60px * var(--fs)); margin-bottom: 16px; }
+    .screen-title { font-size: calc(20px * var(--fs)); font-weight: 700; margin-bottom: 8px; }
+    .screen-msg { font-size: calc(14px * var(--fs)); color: var(--muted); line-height: 1.6; }
+    .retry-btn {
+      margin-top: 20px; padding: 12px 28px;
+      background: var(--green); color: #fff;
+      border: none; border-radius: 10px;
+      font-size: calc(15px * var(--fs)); font-weight: 600; cursor: pointer;
+    }
+    /* Progress bar */
+    .progress-bar-wrap { max-width: 380px; margin: 20px auto 0; }
+    .progress-bar-track {
+      width: 100%; height: 10px; background: #e6f4e6;
+      border-radius: 6px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; width: 0%; background: var(--green);
+      border-radius: 6px; transition: width 0.3s ease;
+    }
+    .progress-bar-fill.error { background: var(--red); }
+    .progress-bar-pct {
+      text-align: center; font-size: calc(13px * var(--fs)); color: var(--muted);
+      margin-top: 6px; font-weight: 600;
+    }
+    /* Progress steps */
+    .progress-steps { max-width: 380px; margin: 20px auto 0; text-align: left; }
+    .step {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 4px; border-bottom: 1px solid var(--border);
+      opacity: 0.4; transition: opacity 0.2s;
+    }
+    .step:last-child { border-bottom: none; }
+    .step.active, .step.done, .step.error { opacity: 1; }
+    .step-icon { font-size: calc(22px * var(--fs)); width: 26px; text-align: center; flex-shrink: 0; }
+    .step-text { flex: 1; min-width: 0; }
+    .step-label { font-size: calc(14px * var(--fs)); font-weight: 600; color: var(--text); }
+    .step.active .step-label { color: var(--green); }
+    .step.error .step-label { color: var(--red); }
+    .step-sub { font-size: calc(12px * var(--fs)); color: var(--muted); margin-top: 2px; min-height: 15px; }
+    .step-status { width: 22px; text-align: center; flex-shrink: 0; font-size: calc(15px * var(--fs)); }
+    .mini-spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid #dde5dd; border-top-color: var(--green);
+      animation: spin 0.7s linear infinite; display: inline-block;
+    }
+    /* Banners */
+    .banner {
+      background: #fff8e1; border: 1.5px solid #f5c518; border-radius: 10px;
+      padding: 12px 14px; margin-bottom: 10px; font-size: calc(13px * var(--fs)); line-height: 1.5;
+    }
+    .banner-actions { margin-top: 8px; display: flex; gap: 8px; }
+    .banner-actions button {
+      padding: 8px 14px; border-radius: 8px; border: none;
+      font-size: calc(13px * var(--fs)); font-weight: 600; cursor: pointer;
+    }
+    .banner-actions .btn-primary { background: var(--green); color: #fff; }
+    .banner-actions .btn-secondary { background: #eee; color: #333; }
+    /* Confirm screen */
+    .confirm-row {
+      display: flex; justify-content: space-between; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid var(--border); font-size: calc(13px * var(--fs));
+    }
+    .confirm-row:last-child { border-bottom: none; }
+    .confirm-label { color: var(--muted); flex: 0 0 42%; }
+    .confirm-value { flex: 1; white-space: pre-wrap; word-break: break-word; text-align: right; }
+  </style>
+</head>
+<body>
+
+<div id="mainApp">
+  <!-- Header -->
+  <div class="hdr">
+    <h1>
+      <span id="hdrTitle">Site Photo Report</span>
+      <small id="hdrSub">รายงานรูปภาพหน้างาน / 現場照片回報</small>
+    </h1>
+    <div class="hdr-actions">
+      <button type="button" class="fs-btn small" id="fsDownBtn" onclick="changeFontScale(-1)" aria-label="Smaller text">A−</button>
+      <button type="button" class="fs-btn big" id="fsUpBtn" onclick="changeFontScale(1)" aria-label="Larger text">A+</button>
+      <button class="lang-btn" id="langBtn" onclick="toggleLang()">TH</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="banner" id="optionsWarn" style="display:none"></div>
+    <div class="banner" id="draftBanner" style="display:none">
+      <div id="draftBannerText"></div>
+      <div class="banner-actions">
+        <button type="button" class="btn-primary" id="draftRestoreBtn" onclick="restoreDraft()"></button>
+        <button type="button" class="btn-secondary" id="draftDiscardBtn" onclick="discardDraft()"></button>
+      </div>
+    </div>
+    <form id="theForm" novalidate>
+
+      <!-- 1. Basic Info -->
+      <div class="card">
+        <div class="sec-title" id="sec1">Basic Information</div>
+
+        <div class="field" id="f-supervisor">
+          <label><span id="l-supervisor">Supervisor</span><span class="req">*</span></label>
+          <select name="supervisor" id="sel-supervisor" disabled>
+            <option value="" id="opt-sel-supervisor-loading">Loading... / กำลังโหลด... / 載入中...</option>
+          </select>
+          <div class="err-msg" id="e-supervisor">Required / จำเป็น</div>
+        </div>
+
+        <div class="field" id="f-contractor">
+          <label><span id="l-contractor">Contractor Company</span><span class="req">*</span></label>
+          <select name="contractor" id="sel-contractor" disabled>
+            <option value="" id="opt-sel-contractor">-- Select --</option>
+          </select>
+          <div class="err-msg" id="e-contractor">Required / จำเป็น</div>
+        </div>
+
+        <div class="field" id="f-projectName">
+          <label><span id="l-projectName">Project Name</span><span class="req">*</span></label>
+          <button type="button" class="multiselect-btn" id="btn-projectName" onclick="openProjectPicker()" disabled>
+            <span id="projectNameSummary">-- Select --</span>
+          </button>
+          <input type="hidden" name="projectName" id="hidden-projectName">
+          <div class="err-msg" id="e-projectName">Required / จำเป็น</div>
+        </div>
+
+        <div class="field" id="f-constructionArea">
+          <label><span id="l-constructionArea">Construction Area</span><span class="req">*</span></label>
+          <input type="text" name="constructionArea" id="i-constructionArea" placeholder="e.g. Building A, Zone 3">
+          <div class="err-msg" id="e-constructionArea">Required / จำเป็น</div>
+        </div>
+
+        <div class="field" id="f-date">
+          <label><span id="l-date">Date</span><span class="req">*</span></label>
+          <input type="date" name="date" id="i-date">
+          <div class="date-late" id="dateLateHint"></div>
+          <div class="err-msg" id="e-date">Required / จำเป็น</div>
+        </div>
+      </div>
+
+      <!-- 2. Photos -->
+      <div class="card">
+        <div class="sec-title" id="sec6">Site Photos / รูปภาพหน้างาน</div>
+        <div class="field" id="f-photos">
+          <div class="photo-zone" id="photoZone">
+            <input type="file" id="photoInput" accept="image/*" multiple onchange="addPhotos(this)">
+            <div class="photo-zone-icon">📷</div>
+            <div class="photo-zone-label" id="l-photoLabel">Tap to upload photos (max 10) / แตะเพื่ออัปโหลดรูป (สูงสุด 10 รูป)</div>
+          </div>
+          <div class="photo-status" id="photoStatus"></div>
+          <div class="photo-grid" id="photoGrid"></div>
+          <div class="err-msg" id="e-photos">Please add at least 1 photo</div>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" class="submit-btn" id="submitBtn">
+        <div class="spinner" id="spinner"></div>
+        <span id="submitLabel">Submit Photos / ส่งรูปภาพ</span>
+      </button>
+
+    </form>
+
+    <!-- Confirm -->
+    <div class="screen" id="confirmScreen" style="text-align:left;padding:20px 4px">
+      <div class="sec-title" id="confirmTitleLbl" style="border:none;margin-bottom:10px">Please Confirm</div>
+      <!-- Buttons sit above the summary: people scrolled the long summary, never
+           reached the button and closed the page thinking the report was sent. -->
+      <div class="confirm-notice" id="confirmNotice">The report has NOT been sent yet. Tap "Confirm &amp; Send" to finish.</div>
+      <button type="button" class="submit-btn" id="confirmSendBtn" onclick="proceedSubmit()">Confirm &amp; Send</button>
+      <button type="button" class="retry-btn" id="confirmBackBtn" style="width:100%;margin:10px 0 14px;background:#eee;color:#333" onclick="showScreen('theForm')">Back to Edit</button>
+      <div class="card" id="confirmSummary"></div>
+    </div>
+
+    <!-- Progress -->
+    <div class="screen" id="progressScreen">
+      <div class="screen-icon">📤</div>
+      <div class="screen-title" id="progressTitle">Submitting Report...</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressBarFill"></div>
+        </div>
+        <div class="progress-bar-pct" id="progressBarPct">0%</div>
+      </div>
+      <div class="progress-steps">
+        <div class="step pending" id="step-photos">
+          <div class="step-icon">📷</div>
+          <div class="step-text">
+            <div class="step-label" id="step-photos-label">Uploading Photos</div>
+            <div class="step-sub" id="step-photos-sub"></div>
+          </div>
+          <div class="step-status" id="step-photos-status"></div>
+        </div>
+        <div class="step pending" id="step-submit">
+          <div class="step-icon">📨</div>
+          <div class="step-text">
+            <div class="step-label" id="step-submit-label">Sending Report</div>
+            <div class="step-sub" id="step-submit-sub"></div>
+          </div>
+          <div class="step-status" id="step-submit-status"></div>
+        </div>
+        <div class="step pending" id="step-process">
+          <div class="step-icon">⚙️</div>
+          <div class="step-text">
+            <div class="step-label" id="step-process-label">Processing Report</div>
+            <div class="step-sub" id="step-process-sub"></div>
+          </div>
+          <div class="step-status" id="step-process-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success -->
+    <div class="screen" id="successScreen">
+      <div class="screen-icon">✅</div>
+      <div class="screen-title" id="successTitle">Submitted!</div>
+      <div class="screen-msg" id="successMsg">Your photos have been submitted. You will receive a confirmation via LINE shortly.</div>
+    </div>
+
+    <!-- Error -->
+    <div class="screen" id="errorScreen">
+      <div class="screen-icon">❌</div>
+      <div class="screen-title" id="errorTitle">Submission Failed</div>
+      <div class="screen-msg" id="errorMsg">Please try again. If the problem persists, contact your supervisor.</div>
+      <div class="screen-msg" id="errorDetail" style="color:#e53e3e;margin-top:10px;display:none;white-space:pre-line"></div>
+      <div class="screen-msg" id="errorReported" style="margin-top:10px;font-size:calc(12px * var(--fs))">This error has been reported to the engineer automatically.</div>
+      <button class="retry-btn" id="retryBtn" style="width:100%" onclick="retryForm()">Resubmit</button>
+      <button type="button" class="retry-btn" id="skipPhotosBtn" style="width:100%;margin-top:10px;background:#f0a020;display:none" onclick="skipFailedPhotos()">Skip failed photos &amp; send</button>
+      <button type="button" class="retry-btn" id="errorBackBtn" style="width:100%;margin-top:10px;background:#eee;color:#333" onclick="showScreen('theForm')">Back to Edit</button>
+    </div>
+  </div>
+  <div class="app-version" id="appVersion"></div>
+</div>
+
+<!-- Project multi-select popup -->
+<div class="ms-overlay" id="projectPickerOverlay" style="display:none">
+  <div class="ms-sheet">
+    <div class="ms-sheet-title" id="msTitle">Select Projects</div>
+    <div class="ms-list" id="projectCheckList"></div>
+    <div class="ms-actions">
+      <button type="button" class="btn-secondary" id="msCancelBtn" onclick="closeProjectPicker(false)">Cancel</button>
+      <button type="button" class="btn-primary" id="msConfirmBtn" onclick="closeProjectPicker(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIGURATION — fill in before deploying
+// ═══════════════════════════════════════════════════════════
+// Photo-only form: same basic info + photo upload as index.html, but the
+// photos go to Google Drive (Supervisor Photo Upload) and the report goes to
+// the "Supervisor Photo Report" n8n workflow, which only sends LINE messages
+// (no PDF, no Email, no Notion).
+// Bump on every change to this file. The LINE in-app browser keeps serving a
+// cached copy of the page for a long time after an update; checkForUpdate()
+// compares this against the live file and reloads when they differ.
+const APP_VERSION = 'photo-2026-11-12.2';
+
+const CFG = {
+  LIFF_ID:          '2010536222-MhPB41l8',
+  // "Supervisor Photo Report" n8n workflow (no Notion)
+  N8N_WEBHOOK_URL:  'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-photo-report',
+  // Photos are saved to Google Drive by the "Supervisor Photo Upload" n8n workflow
+  PHOTO_UPLOAD_URL: 'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-photo',
+  // Errors users hit are sent here ("Supervisor Form Error Report" n8n workflow → LINE to Jerry)
+  ERROR_REPORT_URL: 'https://jerry-hsieh.app.n8n.cloud/webhook/supervisor-form-error',
+  MAX_PHOTOS: 10,
+  PHOTO_MAX_PX: 1280,
+  PHOTO_QUALITY: 0.70,
+  // Loaded only when a HEIC/HEIF photo is picked that the browser can't show
+  HEIC2ANY_URL: 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js',
+
+  // ✏️ 選項來源：Google Sheets 公開 CSV（發布到網路後貼上 URL）
+  OPTIONS_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkQBYyPpBG6ccieLxNjwu3yG5uccLAm29rVqCNKMx0XRSNbd29Mqx_bKQCmCCjDKSwNPsbUl5KLrmZ/pub?gid=0&single=true&output=csv',
+};
+// ═══════════════════════════════════════════════════════════
+
+// Phone-local date as YYYY-MM-DD. toISOString() is UTC, which in Thailand
+// (UTC+7) still shows yesterday until 07:00.
+function localDateStr(d = new Date()) {
+  const p2 = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+}
+
+// Auto-populate dropdowns from the options CSV
+function fillSelect(id, items) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  items.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+}
+
+let supervisorEmailMap = {};
+// Hierarchy from the options CSV: 工程師(supervisor) → 廠商(contractor) → 工程名稱(project).
+// contractorsByEngineer[supervisorName] = [contractor names under that engineer]
+// projectsByContractor[contractorName] = [project names under that contractor]
+let contractorsByEngineer = {};
+let projectsByContractor = {};
+let projectNotionUrlMap = {};
+
+// Minimal RFC 4180 CSV parser: Google Sheets quotes any cell containing a
+// comma, quote or newline, which a plain split(',') would break apart.
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else cell += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+// The last successfully loaded CSV is kept on the phone, so a site with no
+// signal can still fill in the form with the options from last time.
+const OPTIONS_CACHE_KEY = 'wl_options_csv';
+
+function applyOptionsCsv(csv) {
+  const supervisors = [];
+  supervisorEmailMap = {}; contractorsByEngineer = {}; projectsByContractor = {}; projectNotionUrlMap = {};
+  parseCSV(csv).slice(1).forEach(row => {
+    const cols = row.map(s => s.trim());
+    const [name, type, enabled, email, parent, notionLink] = cols;
+    if (!name || enabled !== 'TRUE') return;
+    if (type === '監工人員') {
+      supervisors.push(name);
+      if (email) supervisorEmailMap[name] = email;
+    } else if (type === '施工廠商') {
+      const key = parent || '';
+      if (!contractorsByEngineer[key]) contractorsByEngineer[key] = [];
+      contractorsByEngineer[key].push(name);
+    } else if (type === '工程名稱') {
+      const key = parent || '';
+      if (!projectsByContractor[key]) projectsByContractor[key] = [];
+      projectsByContractor[key].push(name);
+      // 6th CSV column: "Notion工程連結" — the project's Work Item page in
+      // Notion, used server-side to auto-link the daily log's Related Work Item.
+      if (notionLink) projectNotionUrlMap[name] = notionLink;
+    }
+  });
+  return supervisors;
+}
+
+// Replace the "Loading options..." placeholder once the hierarchy is ready —
+// the select stays disabled up to this point so a fast tap can't pick a
+// supervisor before contractorsByEngineer/projectsByContractor are populated
+// (that race left the contractor/project lists empty).
+function enableSupervisorSelect(supervisors) {
+  const supSel = document.getElementById('sel-supervisor');
+  supSel.innerHTML = '';
+  const blank = document.createElement('option');
+  blank.value = ''; blank.id = 'opt-sel'; blank.textContent = T[lang]['opt-sel'];
+  supSel.appendChild(blank);
+  fillSelect('sel-supervisor', supervisors);
+  supSel.disabled = false;
+}
+
+let optionsCachedAt = null; // set when the form fell back to the cached options
+
+function showOptionsWarn() {
+  const w = document.getElementById('optionsWarn');
+  if (!w) return;
+  const t = T[lang];
+  w.textContent = optionsCachedAt
+    ? t.optionsCachedMsg(localTimeString(new Date(optionsCachedAt)).replace(/ \(.*\)$/, ''))
+    : t.optionsWarnMsg;
+  w.style.display = 'block';
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Without a timeout a weak site signal can leave "Loading..." up forever
+  // instead of falling back to the cached options.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const res = await fetch(CFG.OPTIONS_URL, { signal: ctrl.signal });
+    if (!res.ok) throw new Error('options fetch failed: HTTP ' + res.status);
+    const csv = await res.text();
+    enableSupervisorSelect(applyOptionsCsv(csv));
+    try { localStorage.setItem(OPTIONS_CACHE_KEY, JSON.stringify({ csv, at: Date.now() })); } catch (e) {}
+  } catch (e) {
+    const msg = e.name === 'AbortError' ? 'options fetch timed out (15s)' : e.message;
+    console.warn('[form-options] fetch failed:', msg);
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(OPTIONS_CACHE_KEY) || 'null'); } catch (err) {}
+    if (cached && cached.csv) {
+      optionsCachedAt = cached.at;
+      enableSupervisorSelect(applyOptionsCsv(cached.csv));
+      reportError('options_load_failed', msg + ' (using cached options)');
+    } else {
+      enableSupervisorSelect([]);
+      reportError('options_load_failed', msg);
+    }
+    showOptionsWarn();
+  } finally {
+    clearTimeout(timer);
+  }
+  applyLastSelection();
+});
+
+// ── Pre-fill from the last report ──────────────────────────
+// Supervisor, contractor and project(s) of the last report sent from this phone
+// are filled in automatically; everything else starts empty. A restored draft
+// overrides this (the user chooses that from the draft banner).
+const LAST_SEL_KEY = 'wl_last_selection';
+
+function saveLastSelection(raw) {
+  try {
+    localStorage.setItem(LAST_SEL_KEY, JSON.stringify({
+      supervisor: raw.supervisor || '', contractor: raw.contractor || '', projects: selectedProjects.slice()
+    }));
+  } catch (e) {}
+}
+
+function applyLastSelection() {
+  let last = null;
+  try { last = JSON.parse(localStorage.getItem(LAST_SEL_KEY) || 'null'); } catch (e) {}
+  const supSel = document.getElementById('sel-supervisor');
+  if (!last || !last.supervisor || supSel.value) return;
+  // Options removed or renamed in the Google Sheet since then are skipped.
+  if (!Array.from(supSel.options).some(o => o.value === last.supervisor)) return;
+  supSel.value = last.supervisor;
+  populateContractorOptions(last.supervisor);
+  if (!(contractorsByEngineer[last.supervisor] || []).includes(last.contractor)) return;
+  document.getElementById('sel-contractor').value = last.contractor;
+  populateProjectOptions(last.contractor);
+  selectedProjects = (last.projects || []).filter(p => currentProjectOptions.includes(p));
+  updateProjectSummary();
+}
+
+// ── Cascading filters: supervisor → contractor → project (multi-select) ────
+let currentProjectOptions = [];
+let selectedProjects = [];
+
+function populateContractorOptions(supervisorName) {
+  const sel = document.getElementById('sel-contractor');
+  const t = T[lang];
+  sel.innerHTML = '';
+  const blank = document.createElement('option');
+  blank.value = ''; blank.id = 'opt-sel-contractor'; blank.textContent = t['opt-sel'];
+  sel.appendChild(blank);
+  const list = supervisorName ? (contractorsByEngineer[supervisorName] || []) : [];
+  list.forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  });
+  sel.disabled = !supervisorName;
+  populateProjectOptions('');
+}
+
+function populateProjectOptions(contractorName) {
+  currentProjectOptions = contractorName ? (projectsByContractor[contractorName] || []) : [];
+  selectedProjects = selectedProjects.filter(p => currentProjectOptions.includes(p));
+  document.getElementById('btn-projectName').disabled = !contractorName;
+  updateProjectSummary();
+}
+
+function updateProjectSummary() {
+  const hidden = document.getElementById('hidden-projectName');
+  const summary = document.getElementById('projectNameSummary');
+  hidden.value = selectedProjects.join(', ');
+  summary.textContent = selectedProjects.length ? selectedProjects.join(', ') : T[lang]['opt-sel'];
+}
+
+function openProjectPicker() {
+  const btn = document.getElementById('btn-projectName');
+  if (btn.disabled) return;
+  const t = T[lang];
+  const list = document.getElementById('projectCheckList');
+  list.innerHTML = '';
+  if (!currentProjectOptions.length) {
+    list.innerHTML = `<div class="ms-empty">${t.msEmpty}</div>`;
+  } else {
+    currentProjectOptions.forEach((name, i) => {
+      const row = document.createElement('label');
+      row.className = 'ms-item';
+      const checked = selectedProjects.includes(name) ? 'checked' : '';
+      const safe = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      row.innerHTML = `<input type="checkbox" id="ms-chk-${i}" value="${safe}" ${checked}><span>${safe}</span>`;
+      list.appendChild(row);
+    });
+  }
+  document.getElementById('projectPickerOverlay').style.display = 'flex';
+}
+
+function closeProjectPicker(apply) {
+  if (apply) {
+    const checks = document.querySelectorAll('#projectCheckList input[type="checkbox"]');
+    selectedProjects = Array.from(checks).filter(c => c.checked).map(c => c.value);
+    updateProjectSummary();
+    if (selectedProjects.length) {
+      const f = document.getElementById('f-projectName');
+      if (f) f.classList.remove('err');
+    }
+  }
+  document.getElementById('projectPickerOverlay').style.display = 'none';
+}
+
+document.getElementById('sel-supervisor').addEventListener('change', e => {
+  populateContractorOptions(e.target.value);
+});
+document.getElementById('sel-contractor').addEventListener('change', e => {
+  populateProjectOptions(e.target.value);
+});
+
+// i18n strings
+const T = {
+  en: {
+    hdrTitle: 'Site Photo Report',
+    hdrSub: 'รายงานรูปภาพหน้างาน / 現場照片回報',
+    sec1: 'Basic Information',
+    sec6: 'Site Photos',
+    'l-supervisor': 'Supervisor',
+    'l-projectName': 'Project Name',
+    'l-constructionArea': 'Construction Area',
+    'l-contractor': 'Contractor Company',
+    'l-date': 'Date',
+    'l-photoLabel': 'Tap to add photos (1–10)',
+    photoCountLbl: 'Photos',
+    'opt-sel': '-- Select --',
+    dateLate: (d) => `⚠️ Late entry for ${d}`,
+    optionsCachedMsg: (t) => `⚠️ Could not load the latest options — using the options saved on this phone (${t}). If an option is missing, check your connection and reopen the form.`,
+    submitTimeout: 'Sending the report timed out. Please check your connection and tap "Resubmit".',
+    'i-constructionArea': 'e.g. Building A, Zone 3',
+    submitLabel: 'Submit Photos',
+    'e-photos': 'Please add at least 1 photo',
+    successTitle: 'Submitted!',
+    successMsg: 'Your site photos have been submitted. You will receive a confirmation via LINE shortly.',
+    errorTitle: 'Submission Failed',
+    errorMsg: 'Please try again. If the problem persists, contact your supervisor.',
+    retryBtn: 'Resubmit',
+    errorBackBtn: 'Back to Edit',
+    uploading: (n, t) => `Uploading photo ${n}/${t}...`,
+    submitting: 'Submitting...',
+    langBtn: 'TH',
+    progressTitle: 'Submitting Report...',
+    'step-photos-label': 'Uploading Photos',
+    'step-submit-label': 'Sending Report',
+    'step-process-label': 'Processing Report',
+    noPhotos: 'No photos',
+    processMsgs: [
+      'Sending LINE notification...'
+    ],
+    confirmTitleLbl: 'Please Confirm Before Sending',
+    confirmSendBtn: 'Confirm & Send',
+    confirmBackBtn: 'Back to Edit',
+    draftFound: (mins) => `A previously unsent draft was found (saved ${mins} min ago). Restore it? (Photos are not saved and must be re-added.)`,
+    draftRestoreBtn: 'Restore Draft',
+    draftDiscardBtn: 'Discard',
+    optionsWarnMsg: '⚠️ Failed to load dropdown options (supervisor / project / contractor). Please check your connection or contact your supervisor.',
+    confirmNotice: 'The report has NOT been sent yet. Tap "Confirm & Send" to finish.',
+    skipPhotosBtn: 'Skip failed photos & send',
+    skipPhotosConfirm: (n, t) => `${n} of ${t} photo(s) will NOT be in the report. Send the report without them?`,
+    errorReported: 'This error has been reported to the engineer automatically.',
+    photoConverting: (i, n) => `⏳ Converting HEIC photo ${i}/${n}... please wait`,
+    photoBusy: 'Photos are still being processed. Please wait a moment and try again.',
+    photoUnreadable: (n) => `⚠️ ${n} photo(s) could not be read and were not added. If the photo is stored only in the cloud (Google Photos), download it to the phone first, or take the photo again.`,
+    photoOverLimit: (max) => `Up to ${max} photos only — extra photos were not added.`,
+    photoFailBlock: (n, t) => `⚠️ ${n} of ${t} photo(s) failed to upload, so the report was NOT sent. Please check your connection and tap "Resubmit" — photos already uploaded will not be uploaded again.`,
+    msTitle: 'Select Project(s)',
+    msCancelBtn: 'Cancel',
+    msConfirmBtn: 'Confirm',
+    msEmpty: 'Please select a Contractor Company first',
+  },
+  th: {
+    hdrTitle: 'รายงานรูปภาพหน้างาน',
+    hdrSub: 'Site Photo Report / 現場照片回報',
+    sec1: 'ข้อมูลพื้นฐาน',
+    sec6: 'รูปภาพหน้างาน',
+    'l-supervisor': 'ผู้ควบคุมงาน',
+    'l-projectName': 'ชื่อโครงการ',
+    'l-constructionArea': 'พื้นที่ก่อสร้าง',
+    'l-contractor': 'บริษัทผู้รับเหมา',
+    'l-date': 'วันที่',
+    'l-photoLabel': 'แตะเพื่อเพิ่มรูปภาพ (1–10 รูป)',
+    photoCountLbl: 'จำนวนรูป',
+    'opt-sel': '-- เลือก --',
+    dateLate: (d) => `⚠️ บันทึกย้อนหลังของวันที่ ${d}`,
+    optionsCachedMsg: (t) => `⚠️ โหลดตัวเลือกล่าสุดไม่สำเร็จ กำลังใช้ตัวเลือกที่บันทึกไว้ในโทรศัพท์ (${t}) หากไม่พบตัวเลือกที่ต้องการ กรุณาตรวจสอบอินเทอร์เน็ตแล้วเปิดแบบฟอร์มใหม่`,
+    submitTimeout: 'ส่งรายงานนานเกินไป กรุณาตรวจสอบอินเทอร์เน็ตแล้วกด "ส่งใหม่อีกครั้ง"',
+    'i-constructionArea': 'เช่น อาคาร A โซน 3',
+    submitLabel: 'ส่งรูปภาพ',
+    'e-photos': 'กรุณาเพิ่มรูปภาพอย่างน้อย 1 รูป',
+    successTitle: 'ส่งสำเร็จ!',
+    successMsg: 'รูปภาพหน้างานของคุณถูกส่งเรียบร้อยแล้ว คุณจะได้รับสำเนาทาง LINE ในไม่ช้า',
+    errorTitle: 'ส่งไม่สำเร็จ',
+    errorMsg: 'กรุณาลองใหม่อีกครั้ง หากยังมีปัญหา กรุณาติดต่อผู้ควบคุมงาน',
+    retryBtn: 'ส่งใหม่อีกครั้ง',
+    errorBackBtn: 'กลับไปแก้ไข',
+    uploading: (n, t) => `กำลังอัปโหลดรูป ${n}/${t}...`,
+    submitting: 'กำลังส่ง...',
+    langBtn: '中文',
+    progressTitle: 'กำลังส่งรายงาน...',
+    'step-photos-label': 'กำลังอัปโหลดรูปภาพ',
+    'step-submit-label': 'กำลังส่งรายงาน',
+    'step-process-label': 'กำลังประมวลผลรายงาน',
+    noPhotos: 'ไม่มีรูปภาพ',
+    processMsgs: [
+      'กำลังส่งการแจ้งเตือนทาง LINE...'
+    ],
+    confirmTitleLbl: 'กรุณายืนยันก่อนส่ง',
+    confirmSendBtn: 'ยืนยันและส่ง',
+    confirmBackBtn: 'กลับไปแก้ไข',
+    draftFound: (mins) => `พบร่างที่ยังไม่ได้ส่ง (บันทึกไว้เมื่อ ${mins} นาทีที่แล้ว) ต้องการกู้คืนหรือไม่? (รูปภาพไม่ได้ถูกบันทึกไว้ ต้องเลือกใหม่)`,
+    draftRestoreBtn: 'กู้คืนร่าง',
+    draftDiscardBtn: 'ล้างข้อมูล',
+    optionsWarnMsg: '⚠️ โหลดตัวเลือก (ผู้ควบคุมงาน/โครงการ/ผู้รับเหมา) ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือติดต่อผู้ควบคุมงาน',
+    confirmNotice: 'รายงานยังไม่ได้ถูกส่ง! กรุณากด "ยืนยันและส่ง" เพื่อให้เสร็จสิ้น',
+    skipPhotosBtn: 'ข้ามรูปที่อัปโหลดไม่สำเร็จแล้วส่งรายงาน',
+    skipPhotosConfirm: (n, t) => `รูป ${n} จาก ${t} รูปจะไม่อยู่ในรายงาน ต้องการส่งรายงานโดยไม่มีรูปเหล่านี้หรือไม่?`,
+    errorReported: 'ระบบได้แจ้งข้อผิดพลาดนี้ไปยังวิศวกรโดยอัตโนมัติแล้ว',
+    photoConverting: (i, n) => `⏳ กำลังแปลงรูป HEIC ${i}/${n}... กรุณารอสักครู่`,
+    photoBusy: 'ระบบกำลังประมวลผลรูปภาพ กรุณารอสักครู่แล้วลองอีกครั้ง',
+    photoUnreadable: (n) => `⚠️ มี ${n} รูปที่อ่านไม่ได้และไม่ได้ถูกเพิ่ม หากรูปเก็บไว้บนคลาวด์ (Google Photos) กรุณาดาวน์โหลดลงเครื่องก่อน หรือถ่ายรูปใหม่`,
+    photoOverLimit: (max) => `เลือกได้สูงสุด ${max} รูป รูปที่เกินจะไม่ถูกเพิ่ม`,
+    photoFailBlock: (n, t) => `⚠️ อัปโหลดรูปไม่สำเร็จ ${n} จาก ${t} รูป รายงานยังไม่ได้ถูกส่ง กรุณาตรวจสอบอินเทอร์เน็ตแล้วกด "ส่งใหม่อีกครั้ง" (รูปที่อัปโหลดสำเร็จแล้วจะไม่ถูกอัปโหลดซ้ำ)`,
+    msTitle: 'เลือกโครงการ',
+    msCancelBtn: 'ยกเลิก',
+    msConfirmBtn: 'ยืนยัน',
+    msEmpty: 'กรุณาเลือกบริษัทผู้รับเหมาก่อน',
+  },
+  zh: {
+    hdrTitle: '現場照片回報',
+    hdrSub: 'Site Photo Report / รายงานรูปภาพหน้างาน',
+    sec1: '基本資料',
+    sec6: '現場照片',
+    'l-supervisor': '負責工程師',
+    'l-projectName': '工程名稱',
+    'l-constructionArea': '施工廠區',
+    'l-contractor': '施工廠商',
+    'l-date': '日期',
+    'l-photoLabel': '點擊加入現場照片（1–10 張）',
+    photoCountLbl: '照片張數',
+    'opt-sel': '-- 請選擇 --',
+    dateLate: (d) => `⚠️ 補填 ${d} 的日誌`,
+    optionsCachedMsg: (t) => `⚠️ 無法載入最新選項，目前使用這支手機上次儲存的選項（${t}）。若找不到需要的選項，請確認網路後重新開啟表單。`,
+    submitTimeout: '送出報告逾時，請確認網路後按「重新送出」。',
+    'i-constructionArea': '例如：A棟、3區',
+    submitLabel: '送出照片',
+    'e-photos': '請至少加入 1 張照片',
+    successTitle: '送出成功！',
+    successMsg: '照片已成功送出，您即將透過 LINE 收到確認訊息。',
+    errorTitle: '送出失敗',
+    errorMsg: '請重試。若問題持續發生，請聯絡負責工程師。',
+    retryBtn: '重新送出',
+    errorBackBtn: '返回修改',
+    uploading: (n, t) => `正在上傳照片 ${n}/${t}...`,
+    submitting: '送出中...',
+    langBtn: 'EN',
+    progressTitle: '正在送出報告...',
+    'step-photos-label': '上傳照片中',
+    'step-submit-label': '送出報告中',
+    'step-process-label': '系統處理中',
+    noPhotos: '無照片',
+    processMsgs: [
+      '推送LINE通知中...'
+    ],
+    confirmTitleLbl: '送出前請確認資料',
+    confirmSendBtn: '確認送出',
+    confirmBackBtn: '返回修改',
+    draftFound: (mins) => `偵測到尚未送出的草稿（${mins} 分鐘前儲存），要恢復嗎？（照片未被儲存，需重新選擇）`,
+    draftRestoreBtn: '恢復草稿',
+    draftDiscardBtn: '清除草稿',
+    optionsWarnMsg: '⚠️ 選項載入失敗（負責工程師/工程名稱/施工廠商），請確認網路連線或聯絡管理員',
+    confirmNotice: '報告還沒送出！請按「確認送出」才算完成。',
+    skipPhotosBtn: '略過失敗的照片，直接送出報告',
+    skipPhotosConfirm: (n, t) => `${t} 張照片中有 ${n} 張不會出現在報告裡，確定要不含這些照片送出嗎？`,
+    errorReported: '此錯誤已自動回報給負責工程師。',
+    photoConverting: (i, n) => `⏳ 正在轉換 HEIC 照片 ${i}/${n}，請稍候…`,
+    photoBusy: '照片還在處理中，請稍候再按送出。',
+    photoUnreadable: (n) => `⚠️ 有 ${n} 張照片無法讀取，沒有加入。若照片只存在雲端（Google 相簿），請先下載到手機，或重新拍攝。`,
+    photoOverLimit: (max) => `照片最多 ${max} 張，超過的沒有加入。`,
+    photoFailBlock: (n, t) => `⚠️ ${t} 張照片中有 ${n} 張上傳失敗，報告尚未送出。請確認網路後按「重新送出」（已上傳成功的照片不會重複上傳）。`,
+    msTitle: '選擇工程名稱',
+    msCancelBtn: '取消',
+    msConfirmBtn: '確認',
+    msEmpty: '請先選擇施工廠商',
+  }
+};
+
+let lang = localStorage.getItem('wl_lang') || 'en';
+let photoFiles = [];
+let lineUserId = null;
+let lineDisplayName = null;
+let currentPct = 0;
+
+// ── Error reporting ─────────────────────────────────────────
+// Problems users hit on site (photo can't be read, upload/submit failed, script
+// errors) are sent to n8n, which forwards them to Jerry on LINE, so they can be
+// fixed without having to ask the user what happened. Reports that can't be
+// sent (usually the very network problem being reported) are kept on the phone
+// and sent the next time the form is opened or the connection comes back.
+const ERR_QUEUE_KEY = 'wl_photo_err_queue';
+let errorReportsThisPage = 0; // cap so one broken loop can't flood LINE
+
+function reportError(kind, message, extra = {}) {
+  if (errorReportsThisPage >= 8) return;
+  errorReportsThisPage++;
+  let fd = {};
+  try { fd = Object.fromEntries(new FormData(document.getElementById('theForm')).entries()); } catch (e) {}
+  const report = {
+    kind,
+    // Shared error webhook with index.html — tag this form so Jerry can tell them apart
+    message: ('[照片表單] ' + String(message || '')).slice(0, 1000),
+    form: 'photo',
+    extra,
+    supervisor: fd.supervisor || '',
+    contractor: fd.contractor || '',
+    projectName: fd.projectName || '',
+    reportDate: fd.date || '',
+    photoCount: photoFiles.length,
+    submissionId,
+    lineUserId,
+    lineDisplayName,
+    language: lang,
+    online: navigator.onLine,
+    userAgent: navigator.userAgent,
+    at: new Date().toISOString(),
+    localTime: localTimeString(new Date()), // shown as-is in the LINE message
+  };
+  sendErrorReports([report]);
+}
+
+// "2026/10/13 11:30:05 (Asia/Bangkok, UTC+7)" in the phone's own time zone
+function localTimeString(d) {
+  const p2 = n => String(n).padStart(2, '0');
+  const off = -d.getTimezoneOffset();
+  const offStr = 'UTC' + (off >= 0 ? '+' : '-') + Math.floor(Math.abs(off) / 60) + (Math.abs(off) % 60 ? ':' + p2(Math.abs(off) % 60) : '');
+  let tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+  return `${d.getFullYear()}/${p2(d.getMonth() + 1)}/${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())} (${tz ? tz + ', ' : ''}${offStr})`;
+}
+
+function loadErrorQueue() {
+  try { return JSON.parse(localStorage.getItem(ERR_QUEUE_KEY) || '[]'); } catch (e) { return []; }
+}
+function saveErrorQueue(q) {
+  try { localStorage.setItem(ERR_QUEUE_KEY, JSON.stringify(q.slice(-20))); } catch (e) {}
+}
+
+async function sendErrorReports(reports) {
+  const failed = [];
+  for (const r of reports) {
+    try {
+      const res = await fetch(CFG.ERROR_REPORT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(r),
+        keepalive: true,
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    } catch (e) {
+      failed.push(r);
+    }
+  }
+  if (failed.length) saveErrorQueue(loadErrorQueue().concat(failed));
+}
+
+function flushErrorQueue() {
+  const q = loadErrorQueue();
+  if (!q.length) return;
+  saveErrorQueue([]);
+  sendErrorReports(q);
+}
+
+window.addEventListener('online', flushErrorQueue);
+window.addEventListener('error', e => {
+  // Cross-origin script errors arrive as a bare "Script error." with no detail
+  if (!e.message || e.message === 'Script error.') return;
+  reportError('js_error', e.message, { source: `${e.filename || ''}:${e.lineno || ''}:${e.colno || ''}`, stack: String(e.error?.stack || '').slice(0, 800) });
+});
+window.addEventListener('unhandledrejection', e => {
+  reportError('js_error', String(e.reason?.message || e.reason || 'unhandled rejection'), { stack: String(e.reason?.stack || '').slice(0, 800) });
+});
+
+// ── Stale-page check ─────────────────────────────────────
+// Fetch the live page bypassing every cache; if its APP_VERSION differs, reload
+// with a new ?_v= so the browser can't hand back the cached copy. Skipped once
+// the user has started filling in the form, and tried once per version so a
+// slow-to-update CDN can't cause a reload loop.
+let formTouched = false;
+document.addEventListener('input', () => { formTouched = true; }, { once: true });
+
+async function checkForUpdate() {
+  try {
+    const res = await fetch(location.pathname + '?_v=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const live = ((await res.text()).match(/const APP_VERSION = '([^']+)'/) || [])[1];
+    if (!live || live === APP_VERSION || formTouched || photoFiles.length) return;
+    let tried = null;
+    try { tried = sessionStorage.getItem('wl_photo_reload_for'); } catch (e) {}
+    if (tried === live) return;
+    try { sessionStorage.setItem('wl_photo_reload_for', live); } catch (e) {}
+    const url = new URL(location.href);
+    url.searchParams.set('_v', live);
+    location.replace(url.toString());
+  } catch (e) {
+    console.warn('update check failed', e);
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  applyFontScale();
+  applyLang();
+  initDateField();
+  document.getElementById('appVersion').textContent = 'v' + APP_VERSION;
+  checkForUpdate();
+  checkDraft();
+  await initLiff();
+  flushErrorQueue(); // after LIFF so lineUserId is set for new reports
+});
+
+async function initLiff() {
+  try {
+    await liff.init({ liffId: CFG.LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    const p = await liff.getProfile();
+    lineUserId = p.userId;
+    lineDisplayName = p.displayName;
+    // Auto-detect language from LINE client locale, but only if the user
+    // hasn't already picked one manually (stored in localStorage).
+    if (!localStorage.getItem('wl_lang')) {
+      const liffLang = (liff.getLanguage && liff.getLanguage()) || '';
+      const detected = liffLang.startsWith('th') ? 'th' : liffLang.startsWith('zh') ? 'zh' : liffLang.startsWith('en') ? 'en' : null;
+      if (detected && detected !== lang) {
+        lang = detected;
+        applyLang();
+      }
+    }
+  } catch (e) {
+    // Dev/browser fallback
+    lineUserId = 'dev_' + Math.random().toString(36).slice(2, 8);
+    lineDisplayName = 'Dev User';
+    console.warn('LIFF not available — dev mode:', e.message);
+  }
+}
+
+// ── Text size ────────────────────────────────────────────
+// Many on-site users are older, so the A−/A+ buttons scale every text size
+// below the header via the --fs CSS variable. Choice is remembered per device.
+const FONT_SCALES = [0.9, 1, 1.15, 1.3, 1.5];
+let fontScaleIdx = (() => {
+  try {
+    const i = FONT_SCALES.indexOf(Number(localStorage.getItem('wl_fs')));
+    return i >= 0 ? i : 1;
+  } catch (e) { return 1; }
+})();
+
+function applyFontScale() {
+  document.documentElement.style.setProperty('--fs', FONT_SCALES[fontScaleIdx]);
+  document.getElementById('fsDownBtn').disabled = fontScaleIdx === 0;
+  document.getElementById('fsUpBtn').disabled = fontScaleIdx === FONT_SCALES.length - 1;
+}
+
+function changeFontScale(step) {
+  fontScaleIdx = Math.max(0, Math.min(FONT_SCALES.length - 1, fontScaleIdx + step));
+  try { localStorage.setItem('wl_fs', String(FONT_SCALES[fontScaleIdx])); } catch (e) {}
+  applyFontScale();
+}
+
+// ── Language ─────────────────────────────────────────────
+function toggleLang() {
+  lang = lang === 'en' ? 'th' : lang === 'th' ? 'zh' : 'en';
+  localStorage.setItem('wl_lang', lang);
+  applyLang();
+}
+
+function applyLang() {
+  const t = T[lang];
+  const ids = [
+    'hdrTitle','hdrSub','sec1','sec6',
+    'l-supervisor','l-projectName','l-constructionArea','l-contractor','l-date',
+    'l-photoLabel','opt-sel','e-photos',
+    'submitLabel','successTitle','successMsg','errorTitle','errorMsg','retryBtn','errorBackBtn','langBtn',
+    'progressTitle','step-photos-label','step-submit-label','step-process-label',
+    'confirmTitleLbl','confirmSendBtn','confirmBackBtn','confirmNotice','skipPhotosBtn','errorReported',
+    'msTitle','msCancelBtn','msConfirmBtn'
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && t[id] !== undefined) el.textContent = t[id];
+  });
+  const contractorBlank = document.getElementById('opt-sel-contractor');
+  if (contractorBlank) contractorBlank.textContent = t['opt-sel'];
+  if (typeof updateProjectSummary === 'function') updateProjectSummary();
+  // Top banners set their text once when shown, so re-render them here or
+  // they stay in whichever language was active at that moment.
+  if (pendingDraft && document.getElementById('draftBanner').style.display !== 'none') renderDraftBanner();
+  if (lastPhotoFail || lastSubmitTimedOut) renderErrorDetail();
+  const optWarn = document.getElementById('optionsWarn');
+  if (optWarn && optWarn.style.display !== 'none') showOptionsWarn();
+  updateDateHint();
+  // Placeholders
+  ['i-constructionArea','i-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && t[id] !== undefined) el.placeholder = t[id];
+  });
+}
+
+// ── Date ──────────────────────────────────────────────────
+// Defaults to today on the phone. It can still be changed (a log filled in the
+// next morning picks yesterday), but not to a future day; any earlier day shows
+// a "late entry" note so a wrong pick is noticed.
+function initDateField() {
+  const el = document.getElementById('i-date');
+  el.value = localDateStr();
+  el.max = localDateStr();
+  el.addEventListener('change', updateDateHint);
+  el.addEventListener('input', updateDateHint);
+  updateDateHint();
+}
+
+function updateDateHint() {
+  const el = document.getElementById('i-date');
+  const hint = document.getElementById('dateLateHint');
+  if (!el || !hint) return;
+  const late = el.value && el.value < localDateStr();
+  hint.textContent = late ? T[lang].dateLate(el.value) : '';
+  hint.style.display = late ? 'block' : 'none';
+}
+
+// ── Photos ────────────────────────────────────────────────
+// Android phones with "high efficiency pictures" on (Samsung etc.) save HEIC
+// files, which the LINE in-app browser can't display or draw to a canvas — no
+// preview and every upload attempt fails with "cannot read image file". (Sending
+// the same photo in a LINE chat works because the LINE app converts it.) So each
+// picked photo is checked here: anything the browser can't read but is HEIC gets
+// converted to JPEG on the phone first; anything else unreadable is rejected
+// right away instead of failing at submit time.
+let photoQueue = Promise.resolve(); // picks are processed one batch at a time, in order
+let photoBusy = 0;
+
+function addPhotos(input) {
+  const files = Array.from(input.files);
+  input.value = '';
+  photoBusy++;
+  photoQueue = photoQueue
+    .then(() => processPickedPhotos(files))
+    .catch(e => console.error('addPhotos failed', e))
+    .then(() => { photoBusy--; setPhotoStatus(''); });
+}
+
+async function processPickedPhotos(files) {
+  const t = T[lang];
+  const slots = CFG.MAX_PHOTOS - photoFiles.length;
+  if (files.length > slots) alert(t.photoOverLimit(CFG.MAX_PHOTOS));
+  const unreadable = [];
+  const picked = files.slice(0, Math.max(0, slots));
+  const heicTotal = (await Promise.all(picked.map(looksLikeHeic))).filter(Boolean).length;
+  let heicDone = 0;
+  for (const f of picked) {
+    let file = f;
+    if (!(await canDecodeWithRetry(f))) {
+      file = null;
+      let reason = 'browser cannot decode image';
+      if (await looksLikeHeic(f)) {
+        setPhotoStatus(t.photoConverting(++heicDone, heicTotal));
+        try { file = await convertHeicToJpeg(f); } catch (e) { console.warn('HEIC convert failed', e); reason = 'HEIC convert failed: ' + (e?.message || e); }
+      } else {
+        const r = await recoverUndecodable(f);
+        file = r.file;
+        reason = 'browser cannot decode image; ' + r.detail;
+      }
+      if (!file) unreadable.push({ name: f.name, type: f.type, sizeKB: Math.round(f.size / 1024), reason });
+    }
+    if (!file) continue;
+    photoFiles.push(file);
+    showThumb(file, photoFiles.length - 1);
+    document.getElementById('f-photos').classList.remove('err');
+  }
+  setPhotoStatus('');
+  if (unreadable.length) {
+    reportError('photo_unreadable', `${unreadable.length} photo(s) could not be read`, { files: unreadable });
+    alert(t.photoUnreadable(unreadable.length));
+  }
+}
+
+function setPhotoStatus(msg) {
+  const el = document.getElementById('photoStatus');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+// A photo the <img> decoder rejected that isn't HEIC. Seen on Android 16
+// (Samsung, LINE webview) with ordinary .jpg files from the system photo
+// picker: the picker hands over a stream the image decoder can't read
+// directly, while the bytes themselves are fine. So: copy the bytes into
+// memory and try again, then try createImageBitmap (a different decoder) and
+// re-encode to JPEG. The detail string (bytes read, file header) goes into the
+// error report so the remaining cases can be diagnosed.
+async function recoverUndecodable(f) {
+  let bytes;
+  try { bytes = await f.arrayBuffer(); }
+  catch (e) { return { file: null, detail: 'cannot read file bytes (' + (e?.message || e) + ') — probably cloud-only / not on the phone' }; }
+  const head = Array.from(new Uint8Array(bytes.slice(0, 12))).map(b => b.toString(16).padStart(2, '0')).join(' ');
+  const info = `read ${Math.round(bytes.byteLength / 1024)}KB, header ${head || '(empty)'}`;
+  if (!bytes.byteLength) return { file: null, detail: info + ' — file is empty' };
+  const name = (f.name || 'photo').replace(/\.[^.]*$/, '') + '.jpg';
+  const copy = new File([bytes], name, { type: f.type || 'image/jpeg' });
+  if (await canDecodeImage(copy)) return { file: copy, detail: info + ' — recovered from in-memory copy' };
+  try {
+    const jpg = await reencodeViaBitmap(copy);
+    if (jpg && await canDecodeImage(jpg)) return { file: jpg, detail: info + ' — recovered via createImageBitmap' };
+  } catch (e) {
+    return { file: null, detail: info + '; createImageBitmap failed: ' + (e?.message || e) };
+  }
+  return { file: null, detail: info };
+}
+
+async function reencodeViaBitmap(file) {
+  if (!window.createImageBitmap) throw new Error('createImageBitmap unsupported');
+  const bmp = await createImageBitmap(file);
+  let w = bmp.width, h = bmp.height;
+  const M = CFG.PHOTO_MAX_PX;
+  if (w > M || h > M) {
+    if (w >= h) { h = Math.round(h * M / w); w = M; }
+    else { w = Math.round(w * M / h); h = M; }
+  }
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  bmp.close && bmp.close();
+  const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.9));
+  c.width = c.height = 0;
+  if (!blob || !blob.size) throw new Error('re-encode produced empty image');
+  return new File([blob], (file.name || 'photo').replace(/\.[^.]*$/, '') + '.jpg', { type: 'image/jpeg' });
+}
+
+// Before 2026-10-13 photos weren't checked when picked; a failed decode only
+// surfaced at upload, which retries 3 times over ~14s. The pick-time check made
+// a one-off failure (photo not ready yet right after the Android picker hands
+// it over, or the webview short of memory while drawing thumbnails) reject the
+// photo at once — so retry here too before treating it as unreadable.
+async function canDecodeWithRetry(file) {
+  for (const wait of [0, 800, 2000]) {
+    if (wait) await new Promise(r => setTimeout(r, wait));
+    if (await canDecodeImage(file)) return true;
+  }
+  return false;
+}
+
+function canDecodeImage(file) {
+  return new Promise(res => {
+    const src = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(src); res(img.naturalWidth > 0); };
+    img.onerror = () => { URL.revokeObjectURL(src); res(false); };
+    img.src = src;
+  });
+}
+
+// File type/extension isn't reliable on Android (often empty or .jpg), so also
+// check the ISO-BMFF "ftyp" brand in the file header.
+async function looksLikeHeic(file) {
+  if (/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name)) return true;
+  try {
+    const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    const str = String.fromCharCode(...head);
+    return str.slice(4, 8) === 'ftyp' && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(str.slice(8, 12));
+  } catch (e) { return false; }
+}
+
+let heic2anyLoading = null;
+function loadHeic2any() {
+  if (window.heic2any) return Promise.resolve();
+  if (!heic2anyLoading) {
+    heic2anyLoading = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = CFG.HEIC2ANY_URL;
+      s.onload = res;
+      s.onerror = () => { heic2anyLoading = null; rej(new Error('cannot load HEIC converter')); };
+      document.head.appendChild(s);
+    });
+  }
+  return heic2anyLoading;
+}
+
+async function convertHeicToJpeg(file) {
+  await loadHeic2any();
+  let blob = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+  if (Array.isArray(blob)) blob = blob[0]; // multi-image HEIC: keep the first
+  const name = (file.name || 'photo').replace(/\.[^.]*$/, '') + '.jpg';
+  return new File([blob], name, { type: 'image/jpeg' });
+}
+
+// Thumbnails use object URLs (not base64 data URLs of the full-size original):
+// 10 phone photos as data URLs ate enough memory in the LINE webview to make
+// later canvas compression fail. Object URLs are also synchronous, so thumbs
+// stay in the same order as photoFiles and delete removes the right photo.
+function showThumb(file, idx) {
+  const d = document.createElement('div');
+  d.className = 'thumb'; d.id = 'th-' + idx;
+  const img = document.createElement('img');
+  img.src = URL.createObjectURL(file);
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'del'; del.textContent = '✕';
+  del.setAttribute('onclick', `removePhoto(${idx})`);
+  d.append(img, del);
+  document.getElementById('photoGrid').appendChild(d);
+}
+
+function removePhoto(idx) {
+  photoFiles.splice(idx, 1);
+  const el = document.getElementById('th-' + idx);
+  if (el) { URL.revokeObjectURL(el.querySelector('img').src); el.remove(); }
+  // Re-index
+  document.querySelectorAll('.thumb').forEach((el, i) => {
+    el.id = 'th-' + i;
+    el.querySelector('.del').setAttribute('onclick', `removePhoto(${i})`);
+  });
+}
+
+function compressPhoto(file) {
+  return new Promise((res, rej) => {
+    const src = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      const M = CFG.PHOTO_MAX_PX;
+      if (w > M || h > M) {
+        if (w >= h) { h = Math.round(h * M / w); w = M; }
+        else { w = Math.round(w * M / h); h = M; }
+      }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      const b64 = c.toDataURL('image/jpeg', CFG.PHOTO_QUALITY).split(',')[1];
+      c.width = c.height = 0; // free the canvas bitmap right away
+      URL.revokeObjectURL(src);
+      // A canvas the webview couldn't allocate encodes to "data:," — catch it
+      // here instead of uploading an empty image.
+      if (!b64) rej(new Error('compress failed (out of memory?)'));
+      else res(b64);
+    };
+    img.onerror = () => { URL.revokeObjectURL(src); rej(new Error('cannot read image file')); };
+    img.src = src;
+  });
+}
+
+async function uploadPhoto(b64, fileName, projectName) {
+  // Without a timeout a stalled connection on site hangs forever instead of
+  // failing into the retry loop.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60000);
+  try {
+    const r = await fetch(CFG.PHOTO_UPLOAD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // projectName picks the Drive sub-folder the photo is filed under
+      body: JSON.stringify({ image: b64, fileName, projectName }),
+      signal: ctrl.signal
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.success) throw new Error(`photo upload HTTP ${r.status}: ${j.message || j.error?.message || 'no response body'}`);
+    return j.data.url;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('upload timed out (60s)');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ── Validation ────────────────────────────────────────────
+const REQUIRED = ['supervisor','projectName','constructionArea','contractor','date'];
+
+function validate(data) {
+  let ok = true;
+  REQUIRED.forEach(name => {
+    const fid = 'f-' + name;
+    const el = document.getElementById(fid);
+    let invalid = !data[name] || String(data[name]).trim() === '';
+    if (!invalid && name === 'date') invalid = String(data[name]) > localDateStr();
+    if (invalid) {
+      if (el) el.classList.add('err');
+      ok = false;
+    } else {
+      if (el) el.classList.remove('err');
+    }
+  });
+  // This form exists to send photos, so at least one is required
+  const photosEl = document.getElementById('f-photos');
+  if (!photoFiles.length && !photoBusy) { photosEl.classList.add('err'); ok = false; }
+  else photosEl.classList.remove('err');
+  if (!ok) {
+    const first = document.querySelector('.field.err');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  return ok;
+}
+
+// ── Progress steps ──────────────────────────────────────────
+function setStep(name, state, subText) {
+  const el = document.getElementById('step-' + name);
+  if (!el) return;
+  el.classList.remove('pending', 'active', 'done', 'error');
+  el.classList.add(state);
+  const statusEl = document.getElementById('step-' + name + '-status');
+  if (statusEl) {
+    statusEl.innerHTML = state === 'active' ? '<div class="mini-spinner"></div>'
+      : state === 'done' ? '✅'
+      : state === 'error' ? '❌' : '';
+  }
+  if (subText !== undefined) setStepSub(name, subText);
+}
+
+function setStepSub(name, text) {
+  const el = document.getElementById('step-' + name + '-sub');
+  if (el) el.textContent = text;
+}
+
+function resetProgressSteps() {
+  ['photos', 'submit', 'process'].forEach(n => setStep(n, 'pending', ''));
+}
+
+// ── Progress bar ─────────────────────────────────────────────
+function setProgress(pct) {
+  currentPct = Math.max(0, Math.min(100, pct));
+  const fill = document.getElementById('progressBarFill');
+  const label = document.getElementById('progressBarPct');
+  if (fill) fill.style.width = currentPct + '%';
+  if (label) label.textContent = Math.round(currentPct) + '%';
+}
+
+function resetProgress() {
+  const fill = document.getElementById('progressBarFill');
+  if (fill) fill.classList.remove('error');
+  setProgress(0);
+}
+
+function setProgressError() {
+  const fill = document.getElementById('progressBarFill');
+  if (fill) fill.classList.add('error');
+}
+
+// ── Draft autosave ──────────────────────────────────────────
+// Photos (File objects) are intentionally NOT persisted — only text/select
+// field values. Losing a full page of typed text on a flaky site connection
+// is the main pain point; re-tapping photos back in is comparatively cheap.
+const DRAFT_KEY = 'wl_photo_draft_v1'; // separate from index.html's draft (same origin)
+let pendingDraft = null;
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
+
+function saveDraft() {
+  try {
+    const data = Object.fromEntries(new FormData(document.getElementById('theForm')).entries());
+    data.__savedAt = Date.now();
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  } catch (e) { /* localStorage unavailable — draft feature degrades silently */ }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+}
+
+function applyDraftToForm(draft) {
+  const form = document.getElementById('theForm');
+  Object.keys(draft).forEach(k => {
+    if (k === '__savedAt' || k === 'projectName') return;
+    const el = form.elements.namedItem(k);
+    if (el) el.value = draft[k];
+  });
+  updateDateHint();
+  // supervisor/contractor selects don't fire 'change' from a direct .value
+  // assignment, so the cascading contractor/project lists need a manual rebuild.
+  populateContractorOptions(document.getElementById('sel-supervisor').value);
+  if (draft.contractor) document.getElementById('sel-contractor').value = draft.contractor;
+  populateProjectOptions(document.getElementById('sel-contractor').value);
+  if (draft.projectName) {
+    const restored = String(draft.projectName).split(', ').filter(Boolean);
+    selectedProjects = restored.filter(p => currentProjectOptions.includes(p));
+  }
+  updateProjectSummary();
+}
+
+function checkDraft() {
+  let draft;
+  try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { draft = null; }
+  if (!draft || !draft.__savedAt) return;
+  pendingDraft = draft;
+  renderDraftBanner();
+  document.getElementById('draftBanner').style.display = 'block';
+}
+
+function renderDraftBanner() {
+  const t = T[lang];
+  const mins = Math.max(1, Math.round((Date.now() - pendingDraft.__savedAt) / 60000));
+  document.getElementById('draftBannerText').textContent = t.draftFound(mins);
+  document.getElementById('draftRestoreBtn').textContent = t.draftRestoreBtn;
+  document.getElementById('draftDiscardBtn').textContent = t.draftDiscardBtn;
+}
+
+function restoreDraft() {
+  if (pendingDraft) applyDraftToForm(pendingDraft);
+  document.getElementById('draftBanner').style.display = 'none';
+}
+
+function discardDraft() {
+  clearDraft();
+  document.getElementById('draftBanner').style.display = 'none';
+}
+
+document.getElementById('theForm').addEventListener('input', debounce(saveDraft, 800));
+
+// ── Confirm screen ───────────────────────────────────────────
+const CONFIRM_FIELDS = ['supervisor','projectName','constructionArea','contractor','date'];
+let pendingRaw = null;
+let photoNamePrefix = null; // set on first upload attempt of a report
+let submissionId = null;
+let filledAt = null; // when the user first tapped Submit for this report (phone time)
+let submitInFlight = false; // blocks a double tap on "Confirm & Send"
+
+function showConfirmScreen(raw) {
+  const t = T[lang];
+  const rows = CONFIRM_FIELDS.map(key => {
+    const label = t['l-' + key] || key;
+    let value = raw[key];
+    if (key === 'date' && value && value < localDateStr()) value += '\n' + t.dateLate(value);
+    value = (value === undefined || value === null || value === '') ? '-' : String(value);
+    const safe = value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<div class="confirm-row"><div class="confirm-label">${label}</div><div class="confirm-value">${safe}</div></div>`;
+  }).join('');
+  const photoRow = `<div class="confirm-row"><div class="confirm-label">${t.photoCountLbl}</div><div class="confirm-value">${photoFiles.length}</div></div>`;
+  document.getElementById('confirmSummary').innerHTML = rows + photoRow;
+  showScreen('confirmScreen');
+}
+
+// ── Submit ────────────────────────────────────────────────
+document.getElementById('theForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const raw = Object.fromEntries(new FormData(e.target).entries());
+  if (photoBusy) { alert(T[lang].photoBusy); return; }
+  if (!validate(raw)) return;
+  pendingRaw = raw;
+  photoNamePrefix = null;
+  // One ID per report: kept across "Resubmit" so n8n can drop a report it
+  // already received (e.g. the reply was lost on a flaky connection).
+  submissionId = (crypto.randomUUID && crypto.randomUUID()) || (Date.now().toString(36) + Math.random().toString(36).slice(2));
+  filledAt = new Date();
+  showConfirmScreen(raw);
+});
+
+// Upload one photo, retrying on failure (network flakiness on site is the
+// common case). Returns { ok, url } or { ok:false, error } — never throws,
+// so one bad photo can't take down the rest of the submission.
+// Successful uploads are cached per File so that after a failed submission,
+// "Try Again" only re-uploads the photos that didn't make it.
+const uploadedUrlCache = new WeakMap();
+
+async function uploadPhotoWithRetry(file, fileName, projectName, maxRetries = 3) {
+  if (uploadedUrlCache.has(file)) return { ok: true, url: uploadedUrlCache.get(file) };
+  let lastErr;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const b64 = await compressPhoto(file);
+      const url = await uploadPhoto(b64, fileName, projectName);
+      uploadedUrlCache.set(file, url);
+      return { ok: true, url };
+    } catch (e) {
+      lastErr = e;
+      // 2s, 4s, 8s — long enough to ride out a short signal drop on site
+      if (attempt < maxRetries) await new Promise(r => setTimeout(r, 2000 * 2 ** attempt));
+    }
+  }
+  return { ok: false, error: lastErr };
+}
+
+// Upload all photos with a small concurrency pool instead of one-at-a-time,
+// so a slow/failing photo doesn't block the rest and total upload time drops.
+// The first photo goes up alone: n8n creates the project's Drive folder on the
+// first upload, and three parallel uploads into a new project would each
+// create their own copy of the folder.
+async function uploadAllPhotos(files, namePrefix, projectName, onProgress) {
+  const CONCURRENCY = 3;
+  const results = new Array(files.length);
+  let completed = 0;
+  const queue = files.map((_, i) => i);
+  async function worker() {
+    while (queue.length) {
+      const idx = queue.shift();
+      results[idx] = await uploadPhotoWithRetry(files[idx], `${namePrefix}_${String(idx + 1).padStart(2, '0')}.jpg`, projectName);
+      completed++;
+      onProgress(completed, files.length);
+    }
+  }
+  const rest = queue.splice(1);
+  await worker(); // first photo only
+  queue.push(...rest);
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
+  return results;
+}
+
+let lastPhotoFail = null; // { failed, total, reason } of the last attempt, for the error screen
+let lastSubmitTimedOut = false;
+
+function renderErrorDetail() {
+  const el = document.getElementById('errorDetail');
+  el.textContent = lastPhotoFail
+    ? T[lang].photoFailBlock(lastPhotoFail.failed, lastPhotoFail.total) + (lastPhotoFail.reason ? `\n(${lastPhotoFail.reason})` : '')
+    : lastSubmitTimedOut ? T[lang].submitTimeout : '';
+  el.style.display = (lastPhotoFail || lastSubmitTimedOut) ? 'block' : 'none';
+  document.getElementById('skipPhotosBtn').style.display = (lastPhotoFail && lastPhotoFail.failed < lastPhotoFail.total) ? 'block' : 'none';
+}
+
+// "Skip failed photos": send the report with only the photos that already
+// uploaded, instead of making the user retry a photo that keeps failing.
+let skipFailedPhotosOnce = false;
+function skipFailedPhotos() {
+  if (!lastPhotoFail) return;
+  // A photo report with no photo in it is pointless — retry instead
+  if (lastPhotoFail.failed >= lastPhotoFail.total) { proceedSubmit(); return; }
+  if (!confirm(T[lang].skipPhotosConfirm(lastPhotoFail.failed, lastPhotoFail.total))) return;
+  skipFailedPhotosOnce = true;
+  proceedSubmit();
+}
+
+async function proceedSubmit() {
+  const raw = pendingRaw;
+  if (!raw || submitInFlight) return;
+  submitInFlight = true;
+
+  const btn = document.getElementById('submitBtn');
+  const lbl = document.getElementById('submitLabel');
+  const spn = document.getElementById('spinner');
+  const t = T[lang];
+
+  btn.disabled = true;
+  spn.style.display = 'block';
+  lbl.textContent = t.submitting;
+
+  showScreen('progressScreen');
+  resetProgressSteps();
+  resetProgress();
+
+  let processInterval = null;
+  let failedPhotoCount = 0;
+  let skippedPhotoCount = 0;
+  let firstPhotoError = '';
+  const skipFailed = skipFailedPhotosOnce;
+  skipFailedPhotosOnce = false;
+  lastPhotoFail = null;
+  lastSubmitTimedOut = false;
+  renderErrorDetail();
+  try {
+    // Step 1: upload photos in parallel with retry — real, count-based progress
+    const hasPhotos = photoFiles.length > 0;
+    const photoSpan = hasPhotos ? 60 : 0; // % of the bar reserved for photo uploads
+    let photoUrls = [];
+    if (hasPhotos && skipFailed) {
+      // Use only photos uploaded on an earlier attempt; don't retry the rest
+      photoUrls = photoFiles.filter(f => uploadedUrlCache.has(f)).map(f => uploadedUrlCache.get(f));
+      skippedPhotoCount = photoFiles.length - photoUrls.length;
+      reportError('photos_skipped', `user skipped ${skippedPhotoCount} of ${photoFiles.length} photo(s) that failed to upload`);
+      setProgress(photoSpan);
+    } else if (hasPhotos) {
+      setStep('photos', 'active', `0/${photoFiles.length}`);
+      // Drive file name: date_contractor_HHMMSS_01.jpg — groups a report's photos
+      // together and keeps two same-day reports from the same contractor apart.
+      // Fixed per report so a retry names the re-sent photos consistently.
+      if (!photoNamePrefix) {
+        const stamp = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+        photoNamePrefix = `${raw.date}_${raw.contractor || 'unknown'}_${stamp}`;
+      }
+      const results = await uploadAllPhotos(photoFiles, photoNamePrefix, raw.projectName, (done, total) => {
+        setStep('photos', 'active', `${done}/${total}`);
+        setProgress((done / total) * photoSpan);
+      });
+      photoUrls = results.filter(r => r.ok).map(r => r.url);
+      failedPhotoCount = results.filter(r => !r.ok).length;
+      firstPhotoError = String(results.find(r => !r.ok)?.error?.message || '');
+      if (failedPhotoCount) {
+        reportError('photo_upload_failed', `${failedPhotoCount} of ${photoFiles.length} photo(s) failed to upload`, {
+          photos: results.map((r, i) => r.ok ? null : {
+            index: i + 1, name: photoFiles[i].name, type: photoFiles[i].type,
+            sizeKB: Math.round(photoFiles[i].size / 1024), error: String(r.error?.message || r.error || '')
+          }).filter(Boolean)
+        });
+      }
+    }
+    setStep('photos', failedPhotoCount ? 'error' : 'done',
+      hasPhotos ? `${photoUrls.length}/${photoFiles.length}` : t.noPhotos);
+    // Every photo must be uploaded before the report is generated — a report
+    // silently missing site photos is worse than asking the user to retry.
+    if (failedPhotoCount > 0) {
+      lastPhotoFail = { failed: failedPhotoCount, total: photoFiles.length, reason: firstPhotoError };
+      renderErrorDetail();
+      throw new Error(`${failedPhotoCount} photo upload(s) failed`);
+    }
+
+    // Step 2: dispatch to server
+    setStep('submit', 'active');
+    const payload = {
+      ...raw,
+      lineUserId,
+      lineDisplayName,
+      supervisorEmail: supervisorEmailMap[raw.supervisor] || '',
+      submissionId,
+      language: lang,
+      submittedAt: new Date().toISOString(),
+      // Phone-local fill-in time, shown as-is in the LINE message so the
+      // server's own time zone never matters.
+      filledAtLocal: localTimeString(filledAt || new Date()),
+      filledDate: localDateStr(filledAt || new Date()),
+      photoUrls,
+      photoCount: photoUrls.length,
+      skippedPhotoCount,
+      reportType: 'photo',
+    };
+    // Timeout so a stalled connection fails into the error screen ("Resubmit"
+    // reuses the submissionId, so n8n drops a copy that did get through).
+    const submitCtrl = new AbortController();
+    const submitTimer = setTimeout(() => submitCtrl.abort(), 60000);
+    const fetchPromise = fetch(CFG.N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: submitCtrl.signal
+    }).finally(() => clearTimeout(submitTimer));
+    setStep('submit', 'done');
+    setProgress(photoSpan + 5);
+
+    // Step 3: server-side processing (LINE push).
+    // The webhook only replies once everything is done, so there's no real
+    // % to read from the network — ease the bar toward (not reaching) a cap
+    // every tick so it's always visibly moving instead of looking frozen.
+    const msgs = t.processMsgs;
+    const PROCESS_CAP = 95;
+    let mi = 0;
+    setStep('process', 'active', msgs[0]);
+    processInterval = setInterval(() => {
+      mi = (mi + 1) % msgs.length;
+      setStepSub('process', msgs[mi]);
+      setProgress(currentPct + (PROCESS_CAP - currentPct) * 0.12);
+    }, 500);
+
+    let res;
+    try { res = await fetchPromise; }
+    catch (e) {
+      if (e.name !== 'AbortError') throw e;
+      lastSubmitTimedOut = true;
+      renderErrorDetail();
+      throw new Error('submit timed out (60s)');
+    }
+    clearInterval(processInterval);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    setStep('process', 'done');
+    setProgress(100);
+
+    clearDraft();
+    saveLastSelection(raw);
+    setTimeout(() => showScreen('successScreen'), 400);
+  } catch (err) {
+    console.error('Submit error:', err);
+    // Photo failures were already reported above with per-photo detail
+    if (!failedPhotoCount) reportError('submit_failed', err?.message || String(err));
+    if (processInterval) clearInterval(processInterval);
+    if (!failedPhotoCount) setStep('process', 'error');
+    setProgressError();
+    setTimeout(() => showScreen('errorScreen'), 600);
+    btn.disabled = false;
+    spn.style.display = 'none';
+    lbl.textContent = t.submitLabel;
+  } finally {
+    submitInFlight = false;
+  }
+}
+
+function showScreen(id) {
+  ['theForm', 'confirmScreen', 'progressScreen', 'successScreen', 'errorScreen'].forEach(sid => {
+    document.getElementById(sid).style.display = 'none';
+  });
+  document.getElementById(id).style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function retryForm() {
+  // Data was already validated and confirmed once, so resubmit straight away —
+  // already-uploaded photos are cached, only the failed ones are re-sent.
+  if (pendingRaw) proceedSubmit();
+  else showScreen('theForm');
+}
+</script>
+</body>
+</html>
